@@ -1,5 +1,5 @@
 # Project SE
----
+
 Project ini merupakan sebuah website yang dapat digunakan oleh siswa, mahasiswa dan guru untuk untuk mencari materi pembelajaran dengan mengikuti kelas yang berisi materi pembelajaran dengan struktur materi dan sumber pembelajaran, mengikuti pembelajaran secara langsung melalui live classes serta berdiskusi dengan user lain melalui community,
 
 ## Cara Menjalankan Project ini
