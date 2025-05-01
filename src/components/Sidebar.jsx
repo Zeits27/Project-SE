@@ -7,11 +7,12 @@ import {
   Settings,
   Flag,
 } from "lucide-react";
+import { NavLink } from "react-router-dom";
 
 const navItems = [
-  { label: "Home", icon: Home },
+  { label: "Home", icon: Home, to: "/home" },
   { label: "Classes", icon: BarChart },
-  { label: "Community", icon: Users },
+  { label: "Community", icon: Users, to: "/community" },
   { label: "The Experts", icon: Briefcase },
   { label: "Live Class", icon: Video },
   { label: "Settings", icon: Settings },
@@ -22,15 +23,19 @@ export default function Sidebar() {
   return (
     <div className="bg-white h-full w-64 p-6 shadow-md">
       <nav className="flex flex-col space-y-6">
-        {navItems.map(({ label, icon: Icon }) => (
-          <a
+        {navItems.map(({ label, icon: Icon, to }) => (
+          <NavLink
             key={label}
-            href="#"
-            className="flex items-center space-x-3 text-blue-600 text-lg font-medium hover:text-blue-800"
+            to={to}
+            className={({ isActive }) =>
+              `flex items-center space-x-3 text-lg font-medium ${
+                isActive ? "text-blue-800" : "text-blue-600"
+              } hover:text-blue-800`
+            }
           >
             <Icon size={24} />
             <span>{label}</span>
-          </a>
+          </NavLink>
         ))}
       </nav>
     </div>
