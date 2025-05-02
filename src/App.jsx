@@ -5,6 +5,7 @@ import Register from "./page/Register";
 import SetProfile from "./page/SetProfile";
 import Home from "./page/Home";
 import Community from "./page/Community";
+import LiveClasses from "./page/LiveClasses";
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/set-profile" element={<SetProfile />} />
         <Route path="/community" element={<Community />} />
+        <Route path="/liveclasses" element={<LiveClasses />} />
       </Routes>
     </Router>
   );

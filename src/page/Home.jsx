@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-gradient-to-b from-white to-blue-100">
       <Sidebar /> 
-      <main className="flex-1 p-4 overflow-y-auto">
+      <main className="flex-1 p-4  overflow-y-auto">
         <Topbar />
         <WelcomeBanner name='Hi, Jeanette Hauw Chandra' Description='Dive into a world of knowledge, stories, and endless possibilities.' />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
