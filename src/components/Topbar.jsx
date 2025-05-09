@@ -7,7 +7,7 @@ export default function Topbar() {
       <input
         type="text"
         placeholder="Search..."
-        className="w-full max-w-md p-2 px-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300"
+        className="w-full max-w-md p-2 px-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300 bg-blue-50"
       />
 
       {/* kanan */}
