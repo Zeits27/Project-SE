@@ -14,7 +14,7 @@ export default function LiveClasses() {
         <Topbar />
         <WelcomeBanner name='Live Classes' Description='Dive into a world of knowledge, stories, and endless possibilities.' />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-          <div className="md:col-span-2 space-y-6  p-5 rounded-xl pb-28 pt-0">
+          <div className="md:col-span-2 space-y-6  p-5 rounded-xl pb-28 pt-0 pl-0">
             
               <LiveClassCards name="Live Class 1" date="2025-05-10" />
               <LiveClassCards name="Live Class 2" date="2025-05-10" />
