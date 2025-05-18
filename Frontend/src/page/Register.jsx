@@ -15,22 +15,22 @@ export default function Register() {
 
   const handleRegister = async () => {
     setError("");
-
+  
     if (!name || !email || !password) {
       setError("All fields are required.");
       return;
     }
-
+  
     if (!validateEmail(email)) {
       setError("Please enter a valid email address.");
       return;
     }
-
+  
     if (password.length < 6) {
       setError("Password should be at least 6 characters.");
       return;
     }
-
+  
     try {
       setLoading(true);
       const response = await axios.post("http://localhost:8080/api/register", {
@@ -38,9 +38,13 @@ export default function Register() {
         email,
         password,
       });
-
-      console.log(response.data.message);
-      navigate("/");
+  
+      const { token } = response.data;
+      if (token) {
+        localStorage.setItem("token", token); // ✅ Save token
+      }
+  
+      navigate("/set-profile");
     } catch (err) {
       const message =
         err.response?.data?.error || "Registration failed. Try again.";
@@ -49,7 +53,7 @@ export default function Register() {
       setLoading(false);
     }
   };
-
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-400 to-blue-100">
       <div className="w-full max-w-md p-10 bg-white shadow-xl rounded-2xl space-y-6">

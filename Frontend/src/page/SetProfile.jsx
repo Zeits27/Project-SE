@@ -14,8 +14,33 @@ export default function SetProfile() {
       return;
     }
 
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("User not logged in.");
+      return;
+    }
+
     setError("");
-    navigate("/home");
+    fetch("http://localhost:8080/api/profile", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ birthdate, education, region }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to save profile data.");
+        }
+        return response.json();
+      })
+      .then(() => {
+        navigate("/home");
+      })
+      .catch((error) => {
+        setError(error.message);
+      });
   };
 
   return (
@@ -51,9 +76,8 @@ export default function SetProfile() {
 
         <div className="space-y-2">
           <label className="text-base font-medium">Region</label>
-     
-                    <input
-            type="Region"
+          <input
+            type="text"
             placeholder="Region"
             className="w-full p-4 text-lg border rounded-lg"
             value={region}

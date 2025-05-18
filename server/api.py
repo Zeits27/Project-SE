@@ -5,19 +5,20 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
-from supabase import create_client, Client
+import jwt
+import datetime
 
+# Load environment variables
 load_dotenv()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-
-
 app = Flask(__name__)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# Database connection function
+# Secrets
+JWT_SECRET = os.getenv("JWT_SECRET", "your-jwt-secret")
+JWT_EXP_DELTA_SECONDS = 3600  # Token valid for 1 hour
+
+# Database connection
 def get_connection():
     return psycopg2.connect(
         user=os.getenv("user"),
@@ -27,20 +28,33 @@ def get_connection():
         dbname=os.getenv("dbname")
     )
 
-app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
-
-
-
-# Get user by email
+# Helper: get user by email
 def get_user_by_email(email):
-    response = supabase.table("users").select("*").eq("email", email).limit(1).execute()
-    if response.data and len(response.data) > 0:
-        return response.data[0]
-    return None
+    try:
+        with get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute("SELECT * FROM users WHERE email = %s LIMIT 1;", (email,))
+                return cursor.fetchone()
+    except Exception as e:
+        print("Error fetching user:", e)
+        return None
 
+# Helper: decode token
+def decode_token(request):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header.split(" ")[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return payload["email"]
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
 
-# Register endpoint
+# Register
+
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -51,31 +65,40 @@ def register():
     if not name or not email or not password:
         return jsonify({"error": "All fields are required"}), 400
 
-    if get_user_by_email(email):
+    existing_user = get_user_by_email(email)
+    if existing_user:
         return jsonify({"error": "Email already registered"}), 400
 
     hashed_pw = generate_password_hash(password)
 
     try:
-        response = supabase.table("users").insert({
-            "name": name,
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO users (name, email, password) VALUES (%s, %s, %s);",
+                    (name, email, hashed_pw)
+                )
+                conn.commit()
+
+        # Generate token after successful registration
+        payload = {
             "email": email,
-            "password": hashed_pw
-        }).execute()
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(seconds=JWT_EXP_DELTA_SECONDS)
+        }
+        token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
-        print("Insert response:", response)
-
-        if not response.data:
-            return jsonify({"error": "Failed to register user"}), 500
-
-        return jsonify({"message": "User registered successfully"}), 201
+        return jsonify({
+            "message": "User registered successfully",
+            "token": token,
+            "name": name
+        }), 201
 
     except Exception as e:
         print("Registration exception:", e)
         return jsonify({"error": "Something went wrong."}), 500
 
 
-# Login endpoint
+# Login
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -85,12 +108,74 @@ def login():
     user = get_user_by_email(email)
 
     if user and check_password_hash(user["password"], password):
+        payload = {
+            "email": user["email"],
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(seconds=JWT_EXP_DELTA_SECONDS)
+        }
+        token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
         return jsonify({
             "message": "Login successful",
+            "token": token,
             "name": user["name"]
         })
     else:
         return jsonify({"error": "Invalid email or password"}), 401
+
+# Set Profile
+@app.route('/api/profile', methods=['POST'])
+def set_profile():
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json()
+    birthdate = data.get("birthdate")
+    education = data.get("education")
+    region = data.get("region")
+
+    if not birthdate or not education or not region:
+        return jsonify({"error": "All fields are required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE users
+                    SET birthdate = %s,
+                        education = %s,
+                        region = %s
+                    WHERE email = %s;
+                """, (birthdate, education, region, email))
+                conn.commit()
+
+        return jsonify({"message": "Profile updated successfully"}), 200
+
+    except Exception as e:
+        print("Profile update error:", e)
+        return jsonify({"error": "Failed to update profile"}), 500
+
+@app.route('/api/me', methods=['GET'])
+def get_me():
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    user = get_user_by_email(email)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Only send back the info you want the frontend to have
+    return jsonify({
+        "name": user["name"],
+        "email": user["email"],
+        "birthdate": user.get("birthdate"),
+        "education": user.get("education"),
+        "region": user.get("region"),
+    })
+
+
+
+# --- Extra debugging & utils ---
 
 # User Section
 def get_table_list():
@@ -141,6 +226,7 @@ def debug():
     for table in tables:
         print(table['table_name'])
     return jsonify({"debug": "Printed to console"})
-# Run server
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=8080)
