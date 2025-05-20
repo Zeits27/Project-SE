@@ -10,15 +10,15 @@ import Libraries from "./page/Libraries";
 import Classes from "./page/Classes";
 import BookDetail from "./page/BookDetail";
 import axios from "axios";
-import { useState, useEffect } from "react";
+// import { useState, useEffect } from "react";
 
 
 export default function App() {
 
-    const fetchAPI = async () => {
-      const response = await axios.get("http://localhost:8080/api/users");
-      console.log(response.data.users);
-    };
+    // const fetchAPI = async () => {
+    //   const response = await axios.get("http://localhost:8080/api/users");
+    //   console.log(response.data.users);
+    // };
   
     // useEffect(() => {
     //   fetchAPI();
@@ -29,7 +29,7 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/home" element={<Home />} />         
-        <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/set-profile" element={<SetProfile />} />
         <Route path="/community" element={<Community />} />
