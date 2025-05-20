@@ -153,7 +153,9 @@ def set_profile():
     except Exception as e:
         print("Profile update error:", e)
         return jsonify({"error": "Failed to update profile"}), 500
+    
 
+# API: Get current user info
 @app.route('/api/me', methods=['GET'])
 def get_me():
     email = decode_token(request)
@@ -172,6 +174,155 @@ def get_me():
         "education": user.get("education"),
         "region": user.get("region"),
     })
+
+    # Helper: get user ID by email
+def get_user_id_by_email(email):
+        try:
+            with get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("SELECT id FROM users WHERE email = %s LIMIT 1;", (email,))
+                    result = cursor.fetchone()
+                    return result["id"] if result else None
+        except Exception as e:
+            print("Error fetching user ID:", e)
+            return None
+
+    # API: Get current user ID
+@app.route('/api/user_id', methods=['GET'])
+def get_user_id():
+        email = decode_token(request)
+        if not email:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        user_id = get_user_id_by_email(email)
+        if not user_id:
+            return jsonify({"error": "User not found"}), 404
+
+        return jsonify({"user_id": user_id})
+
+    # API: Create a community
+@app.route('/api/community', methods=['POST'])
+def create_community():
+        email = decode_token(request)
+        if not email:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        data = request.get_json()
+        name = data.get("name")
+        description = data.get("description")
+        user_id = data.get("user_id")
+
+        if not name or not description or not user_id:
+            return jsonify({"error": "All fields are required"}), 400
+
+        try:
+            with get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO communities (name, description, user_id)
+                        VALUES (%s, %s, %s)
+                        RETURNING id;
+                        """,
+                        (name, description, user_id)
+                    )
+                    community_id = cursor.fetchone()[0]
+                    conn.commit()
+
+            return jsonify({
+                "message": "Community created successfully",
+                "community_id": community_id
+            }), 201
+
+        except Exception as e:
+            print("Community creation error:", e)
+            return jsonify({"error": "Failed to create community"}), 500
+
+
+@app.route('/api/book', methods=['POST'])
+def create_book():
+        email = decode_token(request)
+        if not email:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        data = request.get_json()
+        title = data.get("title")
+        author = data.get("author")
+        subject = data.get("subject")
+        description = data.get("description")
+        user_id = data.get("user_id")
+
+
+        if not title or not author or not  subject or not description or not user_id:
+            return jsonify({"error": "All fields are required"}), 400
+
+        try:
+            with get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO book (title, author, subject, description, user_id)
+                        VALUES (%s, %s, %s,%s, %s)
+                        RETURNING id;
+                        """,
+                        (title, author, subject, description, user_id)
+                    )
+                    book_id = cursor.fetchone()[0]
+                    conn.commit()
+
+            return jsonify({
+                "message": "Book created successfully",
+                "book_id": book_id
+            }), 201
+
+        except Exception as e:
+            print("book creation error:", e)
+            return jsonify({"error": "Failed to create book"}), 500
+
+@app.route('/api/live-class', methods=['POST'])
+def create_live_class():
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json()
+    name = data.get("name")
+    description = data.get("description")
+    link = data.get("link")
+    date_time = data.get("date_time")
+    user_id = data.get("user_id")
+    subject = data.get("subject")
+
+
+    if not name or not description or not link or not date_time or not subject or not user_id:
+        return jsonify({"error": "All fields are required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO live_class (name, description, link, date_time, subject, user_id)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id;
+                    """,
+                    (name, description, link, date_time, subject, user_id)
+                )
+                live_class_id = cursor.fetchone()[0]
+                conn.commit()
+
+        return jsonify({
+            "message": "Live class created successfully",
+            "live_class_id": live_class_id
+        }), 201
+
+    except Exception as e:
+        print("live class creation error:", e)
+        return jsonify({"error": "Failed to create live class"}), 500
+
+
+
+
 
 
 

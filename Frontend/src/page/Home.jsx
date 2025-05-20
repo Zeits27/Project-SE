@@ -7,7 +7,8 @@ import SectionList from "../components/SectionList";
 import Rightbar from "../components/Rightbar";
 
 export default function Home() {
-
+  
+  
   
   return (
     <div className="flex h-screen bg-gradient-to-b from-white to-blue-100">

@@ -4,7 +4,7 @@ import { createContext, useEffect, useState } from "react";
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null); // null = not logged in
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -17,7 +17,9 @@ export function AuthProvider({ children }) {
     })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data) setUser(data);
+        if (data) {
+          setUser(data);
+        }
       })
       .catch((err) => {
         console.error("Failed to fetch user info", err);

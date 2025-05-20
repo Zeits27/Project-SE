@@ -1,6 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useContext } from "react";
 import axios from "axios";
+import { AuthContext } from "../utils/AuthContext";
+
+
+
 
 export default function Register() {
   const navigate = useNavigate();
@@ -9,6 +14,8 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { setUser } = useContext(AuthContext);
+  
 
   const validateEmail = (email) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -42,6 +49,8 @@ export default function Register() {
       const { token } = response.data;
       if (token) {
         localStorage.setItem("token", token); // ✅ Save token
+        setUser({ name, email });
+
       }
   
       navigate("/set-profile");

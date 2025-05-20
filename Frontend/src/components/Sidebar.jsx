@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { NavLink, Link } from "react-router-dom";
 import logo from "../assets/logo.png";
-import CreateOverlay from "../components/CreateOverlay"; 
+import Create from "../components/Create"; 
 const navItems = [
   { label: "Home", icon: Home, to: "/home" },
   { label: "Classes", icon: BarChart, to: "/classes" },
@@ -27,7 +27,7 @@ const navItems = [
 
 export default function Sidebar() {
   return (
-    <div className="bg-white h-full w-64 p-6 shadow-md flex flex-col">
+    <div className="bg-white h-full w-64 p-6 shadow-md flex flex-col font-mono">
       {/* Logo */}
       <div className="mb-10 flex ">
         <Link to="/home">
@@ -55,7 +55,7 @@ export default function Sidebar() {
         <Plus className="w-5 h-5" />
         <span>Create</span>
       </div> */}
-        <CreateOverlay />
+        <Create />
         </nav>
 
    
