@@ -248,6 +248,119 @@ def create_community():
         except Exception as e:
             print("Community creation error:", e)
             return jsonify({"error": "Failed to create community"}), 500
+        
+#create live-class
+@app.route('/api/live-class', methods=['POST'])
+def create_live_class():
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json()
+    name = data.get("name")
+    description = data.get("description")
+    link = data.get("link")
+    date_time = data.get("date_time")
+    user_id = data.get("user_id")
+    subject = data.get("subject")
+
+
+    if not name or not description or not link or not date_time or not subject or not user_id:
+        return jsonify({"error": "All fields are required"}), 400
+
+    slug = generate_slug(name)
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                base_slug = slug
+                counter = 1
+                while True:
+                    cursor.execute("SELECT id FROM book WHERE slug = %s", (slug,))
+                    if not cursor.fetchone():
+                        break
+                    slug = f"{base_slug}-{counter}"
+                    counter += 1
+
+                cursor.execute(
+                    """
+                    INSERT INTO live_class (name, description, link, date_time, subject, user_id, slug)
+                    VALUES (%s, %s, %s, %s, %s, %s,%s)
+                    RETURNING id;
+                    """,
+                    (name, description, link, date_time, subject, user_id, slug)
+                )
+                live_class_id = cursor.fetchone()[0]
+                conn.commit()
+
+        return jsonify({
+            "message": "Live class created successfully",
+            "live_class_id": live_class_id
+        }), 201
+
+    except Exception as e:
+        print("live class creation error:", e)
+        return jsonify({"error": "Failed to create live class"}), 500
+
+#get all live class
+@app.route("/api/live-class", methods=["GET"])
+def get_all_liveclass():
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT id, name, description, link, date_time, subject, slug
+                    FROM live_class
+                    ORDER BY created_at DESC
+                """)
+                rows = cursor.fetchall()
+                books = []
+                for row in rows:
+                    books.append({
+                        "id": row[0],
+                        "name": row[1],
+                        "description": row[2],
+                        "link": row[3],
+                        "date_time": row[4],
+                        "subject": row[5],
+                        "image": f"https://via.placeholder.com/300x420?text={row[1].replace(' ', '+')}",
+                        "slug": row[6]
+                    })
+                return jsonify(books), 200
+    except Exception as e:
+        print("Error fetching books:", e)
+        return jsonify({"error": "Failed to fetch books"}), 500
+
+#get live stream
+@app.route("/api/live-class/<slug>", methods=["GET"])
+def get_liveclass_by_id(slug):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT id, name, description, link, date_time, subject, slug
+                    FROM live_class
+                    WHERE slug = %s
+                """, (slug,))
+                row = cursor.fetchone()
+                if row:
+                    book = {
+                        "id": row[0],
+                        "name": row[1],
+                        "link": row[3],
+                        "description": row[2],
+                        "date_time": row[4],
+                        "subject": row[5],
+                        "image": f"https://via.placeholder.com/300x420?text={row[1].replace(' ', '+')}",
+                        "slug": row[6]
+
+                    }
+                    return jsonify(book), 200
+                else:
+                    return jsonify({"error": "Book not found"}), 404
+    except Exception as e:
+        print("Error fetching book:", e)
+        return jsonify({"error": "Failed to fetch book"}), 500
 
 
 @app.route('/api/book', methods=['POST'])
@@ -308,7 +421,7 @@ def get_all_books():
         with get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    SELECT id, title, author, subject, description
+                    SELECT id, title, author, subject, description, slug
                     FROM book
                     ORDER BY created_at DESC
                 """)
@@ -321,23 +434,24 @@ def get_all_books():
                         "author": row[2],
                         "subject": row[3],
                         "description": row[4],
-                        "image": f"https://via.placeholder.com/300x420?text={row[1].replace(' ', '+')}"
+                        "image": f"https://via.placeholder.com/300x420?text={row[1].replace(' ', '+')}",
+                        "slug": row[5]
                     })
                 return jsonify(books), 200
     except Exception as e:
         print("Error fetching books:", e)
         return jsonify({"error": "Failed to fetch books"}), 500
 
-@app.route("/api/books/<book_id>", methods=["GET"])
-def get_book_by_id(book_id):
+@app.route("/api/books/<slug>", methods=["GET"])
+def get_book_by_id(slug):
     try:
         with get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    SELECT id, title, author, subject, description
+                    SELECT id, title, author, subject, description, slug
                     FROM book
-                    WHERE id = %s
-                """, (book_id,))
+                    WHERE slug = %s
+                """, (slug,))
                 row = cursor.fetchone()
                 if row:
                     book = {
@@ -346,7 +460,8 @@ def get_book_by_id(book_id):
                         "author": row[2],
                         "subject": row[3],
                         "description": row[4],
-                        "image": f"https://via.placeholder.com/300x420?text={row[1].replace(' ', '+')}"
+                        "image": f"https://via.placeholder.com/300x420?text={row[1].replace(' ', '+')}",
+                        "slug": row[5]
                     }
                     return jsonify(book), 200
                 else:
@@ -354,52 +469,6 @@ def get_book_by_id(book_id):
     except Exception as e:
         print("Error fetching book:", e)
         return jsonify({"error": "Failed to fetch book"}), 500
-
-
-
-@app.route('/api/live-class', methods=['POST'])
-def create_live_class():
-    email = decode_token(request)
-    if not email:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    data = request.get_json()
-    name = data.get("name")
-    description = data.get("description")
-    link = data.get("link")
-    date_time = data.get("date_time")
-    user_id = data.get("user_id")
-    subject = data.get("subject")
-
-
-    if not name or not description or not link or not date_time or not subject or not user_id:
-        return jsonify({"error": "All fields are required"}), 400
-
-    try:
-        with get_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """
-                    INSERT INTO live_class (name, description, link, date_time, subject, user_id)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    RETURNING id;
-                    """,
-                    (name, description, link, date_time, subject, user_id)
-                )
-                live_class_id = cursor.fetchone()[0]
-                conn.commit()
-
-        return jsonify({
-            "message": "Live class created successfully",
-            "live_class_id": live_class_id
-        }), 201
-
-    except Exception as e:
-        print("live class creation error:", e)
-        return jsonify({"error": "Failed to create live class"}), 500
-
-
-
 
 
 

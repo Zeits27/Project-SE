@@ -5,11 +5,7 @@ import {
   Home,
   BarChart,
   Users,
-  Briefcase,
   Video,
-  Settings,
-  Plus,
-  BookDashedIcon,
   Book,
 } from "lucide-react";
 import { NavLink, Link } from "react-router-dom";
@@ -20,9 +16,7 @@ const navItems = [
   { label: "Classes", icon: BarChart, to: "/classes" },
   { label: "Libraries", icon: Book, to: "/libraries" },
   { label: "Community", icon: Users, to: "/community" },
-  { label: "Live Class", icon: Video, to: "/liveclasses" },
-  // { label: "Settings", icon: Settings },
-  // { label: "Report", icon: Flag },
+  { label: "Live Class", icon: Video, to: "/liveclasses" }
 ];
 
 export default function Sidebar() {

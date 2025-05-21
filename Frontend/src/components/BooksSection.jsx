@@ -16,6 +16,7 @@ export default function BooksSection({ title, items }) {
             author={book.author}
             subject={book.subject}
             image={book.image}
+            slug={book.slug}
           />
         ))}
       </div>

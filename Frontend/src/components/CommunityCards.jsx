@@ -1,6 +1,6 @@
 // src/components/CommunityCard.jsx
 
-export default function Cards({ name, people }) {
+export default function CommunityCards({ name, people }) {
     return (
       <div className="flex items-center gap-4 bg-white p-4 rounded-xl shadow ">
         <div className="w-24 h-24 bg-gray-300 rounded"></div>
