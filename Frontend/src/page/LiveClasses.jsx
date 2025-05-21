@@ -4,10 +4,27 @@ import LiveClassCards from "../components/LiveClassCards";
 import Rightbar from "../components/Rightbar";
 import WelcomeBanner from "../components/WelcomeBanner";
 import { RouteGuard } from "../utils/RouteGuard";
-
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 
 export default function LiveClasses() {
+
+  const [liveclass, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    axios.get("http://localhost:8080/api/live-class")
+      .then((res) => {
+        setBooks(res.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error loading books:", err);
+        setLoading(false);
+      });
+  }, []);
+
     // RouteGuard();
   return (
     <div className="flex h-screen bg-gradient-to-br from-white to-blue-100">
@@ -17,12 +34,22 @@ export default function LiveClasses() {
         <WelcomeBanner name='Live Classes' Description='Dive into a world of knowledge, stories, and endless possibilities.' />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
           <div className="md:col-span-2 space-y-6  p-5 rounded-xl pb-28 pt-0 pl-0">
-            
-              <LiveClassCards name="Live Class 1" date="2025-05-10" />
-              <LiveClassCards name="Live Class 2" date="2025-05-10" />
-              <LiveClassCards name="Live Class 3" date="2025-05-10" />
-              <LiveClassCards name="Live Class 4" date="2025-05-10" />
-              <LiveClassCards name="Live Class 5" date="2025-05-10" />
+              {loading ? (
+              <p className="text-gray-500">Loading books...</p>
+              ) : (
+                liveclass.map((livecalsss) => (
+                  <LiveClassCards
+                    key={livecalsss._id}
+                    image={livecalsss.image}
+                    name={livecalsss.name}
+                    subject={livecalsss.subject}
+                    description={livecalsss.description}
+                    date={livecalsss.date_time}
+                    slug={livecalsss.slug}
+                  />
+                ))               
+              )}
+
             </div>
 
             {/* Right Sidebar */}

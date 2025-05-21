@@ -2,7 +2,7 @@
 import { useContext } from "react";
 import { AuthContext } from "../utils/AuthContext";
 
-export default function WelcomeBanner({Description}) {
+export default function WelcomeBanner({name, Description}) {
   const { user } = useContext(AuthContext); // Get user from auth context
 
   const isLoggedIn = !!user;
@@ -16,7 +16,7 @@ export default function WelcomeBanner({Description}) {
         </>
       ) : (
         <>
-          <h1 className="text-xl font-bold">Welcome!</h1>
+          <h1 className="text-xl font-bold">{name}</h1>
           <p>{Description}</p>
         </>
       )}

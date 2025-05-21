@@ -9,7 +9,7 @@ import Rightbar from "../components/Rightbar";
 import BooksSection from "../components/BooksSection";
 
 export default function BookDetail() {
-  const { bookId } = useParams();
+  const { slug } = useParams();
   const [book, setBook] = useState(null);
   const [recommended, setRecommended] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +18,7 @@ export default function BookDetail() {
     const fetchData = async () => {
       try {
         const [bookRes, recRes] = await Promise.all([
-          axios.get(`http://localhost:8080/api/books/${bookId}`),
+          axios.get(`http://localhost:8080/api/books/${slug}`),
           axios.get("http://localhost:8080/api/books")
         ]);
         setBook(bookRes.data);
@@ -31,7 +31,7 @@ export default function BookDetail() {
       }
     };
     fetchData();
-  }, [bookId]);
+  }, [slug]);
 
   if (loading) return <p className="p-6">Loading...</p>;
   if (!book || book.error) return <p className="p-6 text-red-600">Book not found.</p>;

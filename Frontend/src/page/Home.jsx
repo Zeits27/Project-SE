@@ -16,7 +16,7 @@ export default function Home() {
         <Topbar />
 
         <WelcomeBanner 
-         
+          name="Welcome!  "
           Description="Dive into a world of knowledge, stories, and endless possibilities." 
         />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">

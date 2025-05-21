@@ -1,9 +1,8 @@
-// components/BooksCard.jsx
 import { Link } from "react-router-dom";
 
-export default function BooksCard({ id, title, author, subject, image }) {
+export default function BooksCard({ title, author, subject, image, slug  }) {
   return (
-    <Link to={`/books/${id}`}>
+    <Link to={`/books/${slug}`}>
       <div className="w-40 h-64 rounded-xl overflow-hidden shadow bg-white hover:shadow-lg transition">
         <img src={image} alt={title} className="w-full h-40 object-cover" />
         <div className="p-2">
