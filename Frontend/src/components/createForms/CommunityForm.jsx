@@ -15,6 +15,11 @@ export default function CommunityForm({ name, setName, description, setDescripti
       return;
     }
 
+    if (description.length > 100) {
+      setError("Description cannot be more than 100 characters.");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -78,7 +83,9 @@ export default function CommunityForm({ name, setName, description, setDescripti
       <div className="space-y-1">
         <label className="block text-sm font-medium">Description</label>
         <textarea
-          className="w-full p-2 border rounded-md text-sm"
+          className={`w-full p-2 border rounded-md text-sm ${
+            description.length > 100 ? "border-red-500" : ""
+          }`}
           value={description}
           onChange={(e) => {
             setDescription(e.target.value);
@@ -88,6 +95,9 @@ export default function CommunityForm({ name, setName, description, setDescripti
           placeholder="Describe your community"
           rows={4}
         />
+        <div className="text-xs text-gray-500">
+          {description.length}/100 characters
+        </div>
       </div>
 
       <button

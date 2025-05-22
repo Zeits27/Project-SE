@@ -1,5 +1,3 @@
-// pages/BookDetail.jsx
-
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -55,9 +53,16 @@ export default function BookDetail() {
                   <p className="text-gray-600 mb-1 mt-2">{book.description}</p>
                 </div>
                 <div className="flex gap-3 mt-auto">
-                  <button className="bg-blue-700 text-white px-10 py-5 rounded-md hover:bg-blue-800">
-                    Download PDF
-                  </button>
+                <a
+                  href={book.pdf}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-blue-700 text-white px-10 py-5 rounded-md hover:bg-blue-800 inline-flex items-center justify-center"
+                >
+                  Download PDF
+                </a>
+
                   <button className="bg-blue-400 text-white px-10 py-5 rounded-md hover:bg-blue-500">
                     Open in Web
                   </button>

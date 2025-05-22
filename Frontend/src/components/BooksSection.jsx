@@ -1,6 +1,5 @@
 // components/BooksSection.jsx
-
-import BooksCard from "./BooksCard";
+import Card from "./Card";
 
 export default function BooksSection({ title, items }) {
   return (
@@ -9,7 +8,7 @@ export default function BooksSection({ title, items }) {
       <div className="flex flex-wrap gap-4">
 
         {items.map((book) => (
-          <BooksCard
+          <Card
             key={book.id}
             id={book.id}
             title={book.title}
@@ -17,6 +16,8 @@ export default function BooksSection({ title, items }) {
             subject={book.subject}
             image={book.image}
             slug={book.slug}
+            pdf={book.pdf}
+            type="book"
           />
         ))}
       </div>

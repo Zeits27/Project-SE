@@ -14,7 +14,7 @@ export default function Create() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedType, setSelectedType] = useState("Community");
   const [image, setImage] = useState(null);
-  const [preview, setPreview] = useState(null);
+  // const [preview, setPreview] = useState(null);
 
   // Shared form state
   const [name, setName] = useState("");
@@ -27,7 +27,7 @@ export default function Create() {
 
   const resetForm = () => {
     setImage(null);
-    setPreview(null);
+
     setName("");
     setDescription("");
     setSubject("");
@@ -37,13 +37,7 @@ export default function Create() {
     setAuthor("");
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImage(file);
-      setPreview(URL.createObjectURL(file));
-    }
-  };
+
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -162,39 +156,7 @@ export default function Create() {
                   />
                 )}
 
-                {/* Image Upload */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Upload Image
-                  </label>
-                  <div className="flex items-center space-x-3">
-                    <label className="flex items-center justify-center w-28 h-28 border-2 border-dashed rounded-md cursor-pointer text-gray-400 hover:border-blue-400 hover:text-blue-600">
-                      {preview ? (
-                        <img
-                          src={preview}
-                          alt="Preview"
-                          className="object-cover w-full h-full rounded-md"
-                        />
-                      ) : (
-                        <ImagePlus className="w-6 h-6" />
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                </div>
 
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
-                >
-                  Submit
-                </button>
               </form>
             </div>
           </div>

@@ -3,31 +3,26 @@ import axios from 'axios';
 
 export default function BookForm({ title, setTitle, author, setAuthor, description, setDescription }) {
   const [subject, setSubject] = useState("");
+  const [image, setImage] = useState(null); 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pdf, setPdf] = useState(null); 
 
   const subjects = [
-    "Math",
-    "Biology",
-    "History",
-    "Mental Health",
-    "Physics",
-    "Chemistry",
-    "Literature",
-    "Technology",
-    "Art",
-    "Philosophy"
+    "Math", "Biology", "History", "Mental Health", "Physics",
+    "Chemistry", "Literature", "Technology", "Art", "Philosophy"
   ];
 
   const handleSubmit = async () => {
     setError("");
     setSuccess(false);
 
-    if (!title || !author || !description || !subject) {
-      setError("All fields including subject are required.");
+    if (!title || !author || !description || !subject || !image || !pdf) {
+      setError("All fields including subject, image, and PDF are required.");
       return;
     }
+    
 
     try {
       setLoading(true);
@@ -48,11 +43,24 @@ export default function BookForm({ title, setTitle, author, setAuthor, descripti
         return;
       }
 
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("author", author);
+      formData.append("description", description);
+      formData.append("subject", subject);
+      formData.append("user_id", userId);
+      formData.append("image", image); 
+      formData.append("pdf", pdf); 
+
+
       const response = await axios.post(
         "http://localhost:8080/api/book",
-        { title, author, description, subject, user_id: userId },
+        formData,
         {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data"
+          }
         }
       );
 
@@ -62,6 +70,9 @@ export default function BookForm({ title, setTitle, author, setAuthor, descripti
       setAuthor("");
       setDescription("");
       setSubject("");
+      setImage(null);
+      setPdf(null);
+
     } catch (err) {
       console.error("Error submitting book:", err);
       setError("Failed to submit book. Try again.");
@@ -142,7 +153,62 @@ export default function BookForm({ title, setTitle, author, setAuthor, descripti
         />
       </div>
 
-      
+      <div>
+        <label className="block text-sm font-medium mb-1">Book Cover</label>
+
+      {!image && (
+        <input
+          type="file"
+          accept="image/*"
+          className="w-full border rounded-md px-3 py-2 text-sm"
+          onChange={(e) => {
+            setImage(e.target.files[0]);
+            setError("");
+            setSuccess(false);
+          }}
+        />
+      )}
+
+      {image && (
+        <div className="text-sm text-gray-600 mt-1 w-full border rounded-md px-3 py-2 ">
+          Selected file: {image.name}
+          <button
+            onClick={() => setImage(null)}
+            className="ml-2 text-blue-600 underline text-xs"
+          >
+            Change
+          </button>
+        </div>
+      )}
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-1">Book PDF</label>
+
+        {!pdf && (
+          <input
+            type="file"
+            accept="application/pdf"
+            className="w-full border rounded-md px-3 py-2 text-sm"
+            onChange={(e) => {
+              setPdf(e.target.files[0]);
+              setError("");
+              setSuccess(false);
+            }}
+          />
+        )}
+
+        {pdf && (
+          <div className="text-sm text-gray-600 mt-1 w-full border rounded-md px-3 py-2 ">
+            Selected PDF: {pdf.name}
+            <button
+              onClick={() => setPdf(null)}
+              className="ml-2 text-blue-600 underline text-xs"
+            >
+              Change
+            </button>
+          </div>
+        )}
+      </div>
 
       <button
         onClick={handleSubmit}

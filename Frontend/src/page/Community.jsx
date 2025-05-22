@@ -7,6 +7,46 @@ import WelcomeBanner from "../components/WelcomeBanner";
 
 
 export default function Community() {
+  const communities = [
+    {
+      name: "Starfield",
+      people: "914K",
+      description: "Participate in discussions about Bethesda's space RPG, Starfield.",
+      image: "/images/starfield.jpg",
+    },
+    {
+      name: "apexlegends",
+      people: "3M",
+      description: "Share your favorite game clips, funny moments, and insights about Apex Legends.",
+      image: "/images/apex.jpg",
+    },
+    {
+      name: "mildlyinteresting",
+      people: "25M",
+      description: "Appreciate the small things in life that are just a little bit interesting.",
+      image: "/images/mildly.jpg",
+    },
+    {
+      name: "marvelmemes",
+      people: "4.3M",
+      description: "Get your daily dose of superhero humor with the latest Marvel memes!",
+      image: "/images/marvel.jpg",
+    },
+    {
+      name: "popculturechat",
+      people: "5.4M",
+      description: "Dive into discussions about movies, music, celebrity gossip, and more.",
+      image: "/images/popculture.jpg",
+    },
+    {
+      name: "BaldursGate3",
+      people: "3.2M",
+      description: "Gather your party and enter the world of Baldur’s Gate III with this community.",
+      image: "/images/baldur.jpg",
+    },
+  ];
+
+  
   return (
     <div className="flex h-screen bg-gradient-to-br from-white to-blue-100">
       
@@ -15,13 +55,19 @@ export default function Community() {
         <Topbar />
         <WelcomeBanner name='Find Your Community' Description='Dive into a world of knowledge, stories, and endless possibilities.' />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-          <div className="md:col-span-2 space-y-6  p-5 rounded-xl pb-28 pt-0 pl-0">
-              <CommunityCards name="Community 1" people={100} />
-              <CommunityCards name="Community 2" people={100} />
-              <CommunityCards name="Community 3" people={100} />
-              <CommunityCards name="Community 4" people={100} />
-              <CommunityCards name="Community 5" people={100} />
+        <div className="md:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {communities.map((community, index) => (
+              <CommunityCards
+                key={index}
+                name={community.name}
+                people={community.people}
+                description={community.description}
+                image={community.image}
+              />
+            ))}
           </div>
+        </div>
 
             {/* Right Sidebar */}
             <div className="space-y-6">
