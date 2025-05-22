@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+iimport { Link } from "react-router-dom";
 
 export default function Card({
   image,
@@ -97,3 +97,4 @@ export default function Card({
     </Link>
   );
 }
+
