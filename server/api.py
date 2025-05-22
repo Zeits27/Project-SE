@@ -412,29 +412,34 @@ def create_book():
     if not email:
         return jsonify({"error": "Unauthorized"}), 401
 
-    # Use form data instead of JSON
     title = request.form.get("title")
     author = request.form.get("author")
     subject = request.form.get("subject")
     description = request.form.get("description")
     user_id = request.form.get("user_id")
     image = request.files.get("image")
+    pdf = request.files.get("pdf")  
 
-    if not title or not author or not subject or not description or not user_id or not image:
-        return jsonify({"error": "All fields are required, including image"}), 400
+    if not title or not author or not subject or not description or not user_id or not image or not pdf:
+        return jsonify({"error": "All fields are required, including image and PDF"}), 400
 
     slug = generate_slug(title)
 
-    # Upload image to Wasabi
-    filename = secure_filename(image.filename)
-    wasabi_url = upload_to_wasabi(image, f"books/{filename}")
-    if not wasabi_url:
+    # Upload image
+    image_filename = secure_filename(image.filename)
+    image_url = upload_to_wasabi(image, f"books/{image_filename}")
+    if not image_url:
         return jsonify({"error": "Failed to upload image"}), 500
+
+    # Upload PDF
+    pdf_filename = secure_filename(pdf.filename)
+    pdf_url = upload_to_wasabi(pdf, f"books/pdf/{pdf_filename}")
+    if not pdf_url:
+        return jsonify({"error": "Failed to upload PDF"}), 500
 
     try:
         with get_connection() as conn:
             with conn.cursor() as cursor:
-                # Ensure unique slug
                 base_slug = slug
                 counter = 1
                 while True:
@@ -446,11 +451,11 @@ def create_book():
 
                 cursor.execute(
                     """
-                    INSERT INTO book (title, author, subject, description, user_id, slug, image_url)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO book (title, author, subject, description, user_id, slug, image_url, pdf_url)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id;
                     """,
-                    (title, author, subject, description, user_id, slug, wasabi_url)
+                    (title, author, subject, description, user_id, slug, image_url, pdf_url)
                 )
                 book_id = cursor.fetchone()[0]
                 conn.commit()
@@ -459,12 +464,14 @@ def create_book():
             "message": "Book created successfully",
             "book_id": book_id,
             "slug": slug,
-            "image_url": wasabi_url
+            "image_url": image_url,
+            "pdf_url": pdf_url
         }), 201
 
     except Exception as e:
-        print("book creation error:", e)
+        print("Book creation error:", e)
         return jsonify({"error": "Failed to create book"}), 500
+
     
 @app.route("/api/books", methods=["GET"])
 def get_all_books():
@@ -472,7 +479,7 @@ def get_all_books():
         with get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    SELECT id, title, author, subject, description, image_url, slug
+                    SELECT id, title, author, subject, description, image_url, pdf_url, slug
                     FROM book
                     ORDER BY created_at DESC
                 """)
@@ -480,7 +487,10 @@ def get_all_books():
                 books = []
                 for row in rows:
                     image_key = row[5].split(f"{WASABI_BUCKET}/")[-1]
-                    presigned_url = generate_presigned_url(image_key)
+                    pdf_key = row[6].split(f"{WASABI_BUCKET}/")[-1] if row[6] else None
+
+                    image_presigned = generate_presigned_url(image_key)
+                    pdf_presigned = generate_presigned_url(pdf_key) if pdf_key else None
 
                     books.append({
                         "id": row[0],
@@ -488,13 +498,15 @@ def get_all_books():
                         "author": row[2],
                         "subject": row[3],
                         "description": row[4],
-                        "image": presigned_url,  # Use signed URL
-                        "slug": row[6]
+                        "image": image_presigned,
+                        "pdf": pdf_presigned,
+                        "slug": row[7]
                     })
                 return jsonify(books), 200
     except Exception as e:
         print("Error fetching books:", e)
         return jsonify({"error": "Failed to fetch books"}), 500
+
 
 
 @app.route("/api/books/<slug>", methods=["GET"])
@@ -503,23 +515,27 @@ def get_book_by_id(slug):
         with get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    SELECT id, title, author, subject, description,image_url, slug
+                    SELECT id, title, author, subject, description,image_url,pdf_url, slug
                     FROM book
                     WHERE slug = %s
                 """, (slug,))
                 row = cursor.fetchone()
                 image_key = row[5].split(f"{WASABI_BUCKET}/")[-1]
-                presigned_url = generate_presigned_url(image_key)
+                pdf_key = row[6].split(f"{WASABI_BUCKET}/")[-1] if row[6] else None
+
+                image_presigned = generate_presigned_url(image_key)
+                pdf_presigned = generate_presigned_url(pdf_key) if pdf_key else None
 
                 if row:
                     book = {
                         "id": row[0],
-                        "name": row[1],
+                        "title": row[1],
                         "author": row[2],
                         "subject": row[3],
                         "description": row[4],
-                        "image": presigned_url,
-                        "slug": row[6]
+                        "image": image_presigned,
+                        "pdf": pdf_presigned,
+                        "slug": row[7]
                     }
                     return jsonify(book), 200
                 else:

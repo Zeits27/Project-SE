@@ -16,6 +16,7 @@ export default function BooksSection({ title, items }) {
             subject={book.subject}
             image={book.image}
             slug={book.slug}
+            pdf={book.pdf}
             type="book"
           />
         ))}
