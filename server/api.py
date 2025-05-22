@@ -1,14 +1,18 @@
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import psycopg2
-from psycopg2.extras import RealDictCursor
-from dotenv import load_dotenv
 import jwt
 import datetime
 import re
 import unicodedata
+import boto3
+
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+from botocore.exceptions import NoCredentialsError
+from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
 
 
 # Load environment variables
@@ -31,6 +35,19 @@ def get_connection():
         dbname=os.getenv("dbname")
     )
 
+# Wasabi config
+WASABI_ACCESS_KEY = os.getenv("WASABI_ACCESS_KEY")
+WASABI_SECRET_KEY = os.getenv("WASABI_SECRET_KEY")
+WASABI_BUCKET = "eduverse"
+WASABI_ENDPOINT = "https://s3.ap-southeast-1.wasabisys.com"
+
+s3 = boto3.client(
+    's3',
+    endpoint_url=WASABI_ENDPOINT,
+    aws_access_key_id=WASABI_ACCESS_KEY,
+    aws_secret_access_key=WASABI_SECRET_KEY
+)
+
 def generate_slug(title):
     # Normalisasi, hilangkan karakter khusus, ubah spasi jadi strip
     slug = unicodedata.normalize('NFKD', title)
@@ -49,6 +66,31 @@ def get_user_by_email(email):
     except Exception as e:
         print("Error fetching user:", e)
         return None
+#upload to wasabi
+def upload_to_wasabi(file_obj, filename):
+    try:
+        s3.upload_fileobj(
+            file_obj,
+            WASABI_BUCKET,
+            filename,
+            ExtraArgs={"ACL": "public-read"}  # or private
+        )
+        file_url = f"{WASABI_ENDPOINT}/{WASABI_BUCKET}/{filename}"
+        return file_url
+    except NoCredentialsError:
+        return None
+def generate_presigned_url(filename, expiration=3600):
+    try:
+        url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': WASABI_BUCKET, 'Key': filename},
+            ExpiresIn=expiration
+        )
+        return url
+    except Exception as e:
+        print("Presigned URL generation error:", e)
+        return None
+
 
 # Helper: decode token
 def decode_token(request):
@@ -362,6 +404,7 @@ def get_liveclass_by_id(slug):
         print("Error fetching book:", e)
         return jsonify({"error": "Failed to fetch book"}), 500
 
+#books
 
 @app.route('/api/book', methods=['POST'])
 def create_book():
@@ -369,22 +412,29 @@ def create_book():
     if not email:
         return jsonify({"error": "Unauthorized"}), 401
 
-    data = request.get_json()
-    title = data.get("title")
-    author = data.get("author")
-    subject = data.get("subject")
-    description = data.get("description")
-    user_id = data.get("user_id")
+    # Use form data instead of JSON
+    title = request.form.get("title")
+    author = request.form.get("author")
+    subject = request.form.get("subject")
+    description = request.form.get("description")
+    user_id = request.form.get("user_id")
+    image = request.files.get("image")
 
-    if not title or not author or not subject or not description or not user_id:
-        return jsonify({"error": "All fields are required"}), 400
+    if not title or not author or not subject or not description or not user_id or not image:
+        return jsonify({"error": "All fields are required, including image"}), 400
 
     slug = generate_slug(title)
+
+    # Upload image to Wasabi
+    filename = secure_filename(image.filename)
+    wasabi_url = upload_to_wasabi(image, f"books/{filename}")
+    if not wasabi_url:
+        return jsonify({"error": "Failed to upload image"}), 500
 
     try:
         with get_connection() as conn:
             with conn.cursor() as cursor:
-                # Pastikan slug unik (tambah angka jika perlu)
+                # Ensure unique slug
                 base_slug = slug
                 counter = 1
                 while True:
@@ -396,11 +446,11 @@ def create_book():
 
                 cursor.execute(
                     """
-                    INSERT INTO book (title, author, subject, description, user_id, slug)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO book (title, author, subject, description, user_id, slug, image_url)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     RETURNING id;
                     """,
-                    (title, author, subject, description, user_id, slug)
+                    (title, author, subject, description, user_id, slug, wasabi_url)
                 )
                 book_id = cursor.fetchone()[0]
                 conn.commit()
@@ -408,7 +458,8 @@ def create_book():
         return jsonify({
             "message": "Book created successfully",
             "book_id": book_id,
-            "slug": slug
+            "slug": slug,
+            "image_url": wasabi_url
         }), 201
 
     except Exception as e:
@@ -421,26 +472,30 @@ def get_all_books():
         with get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    SELECT id, title, author, subject, description, slug
+                    SELECT id, title, author, subject, description, image_url, slug
                     FROM book
                     ORDER BY created_at DESC
                 """)
                 rows = cursor.fetchall()
                 books = []
                 for row in rows:
+                    image_key = row[5].split(f"{WASABI_BUCKET}/")[-1]
+                    presigned_url = generate_presigned_url(image_key)
+
                     books.append({
                         "id": row[0],
                         "title": row[1],
                         "author": row[2],
                         "subject": row[3],
                         "description": row[4],
-                        "image": f"https://via.placeholder.com/300x420?text={row[1].replace(' ', '+')}",
-                        "slug": row[5]
+                        "image": presigned_url,  # Use signed URL
+                        "slug": row[6]
                     })
                 return jsonify(books), 200
     except Exception as e:
         print("Error fetching books:", e)
         return jsonify({"error": "Failed to fetch books"}), 500
+
 
 @app.route("/api/books/<slug>", methods=["GET"])
 def get_book_by_id(slug):
@@ -448,11 +503,14 @@ def get_book_by_id(slug):
         with get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    SELECT id, title, author, subject, description, slug
+                    SELECT id, title, author, subject, description,image_url, slug
                     FROM book
                     WHERE slug = %s
                 """, (slug,))
                 row = cursor.fetchone()
+                image_key = row[5].split(f"{WASABI_BUCKET}/")[-1]
+                presigned_url = generate_presigned_url(image_key)
+
                 if row:
                     book = {
                         "id": row[0],
@@ -460,8 +518,8 @@ def get_book_by_id(slug):
                         "author": row[2],
                         "subject": row[3],
                         "description": row[4],
-                        "image": f"https://via.placeholder.com/300x420?text={row[1].replace(' ', '+')}",
-                        "slug": row[5]
+                        "image": presigned_url,
+                        "slug": row[6]
                     }
                     return jsonify(book), 200
                 else:

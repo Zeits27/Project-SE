@@ -1,4 +1,4 @@
-import LiveClassSectionCard from "../components/LiveClassSectionCard";
+import Card from "./Card";
 
 
 export default function LiveclassSection({ title, items }) {
@@ -8,13 +8,14 @@ export default function LiveclassSection({ title, items }) {
       <div className="flex flex-wrap gap-4">
 
         {items.map((item) => (
-         <LiveClassSectionCard
+         <Card
             key={item._id}
             image={item.image}
             name={item.name}
             date={item.date_time}
             slug={item.slug}
             subject={item.subject}
+            type = "live-class"
           />
         ))}
       </div>

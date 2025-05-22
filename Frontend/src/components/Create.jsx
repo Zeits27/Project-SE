@@ -14,7 +14,7 @@ export default function Create() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedType, setSelectedType] = useState("Community");
   const [image, setImage] = useState(null);
-  const [preview, setPreview] = useState(null);
+  // const [preview, setPreview] = useState(null);
 
   // Shared form state
   const [name, setName] = useState("");
@@ -163,7 +163,7 @@ export default function Create() {
                 )}
 
                 {/* Image Upload */}
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Upload Image
                   </label>
@@ -186,7 +186,7 @@ export default function Create() {
                       />
                     </label>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Submit Button */}
                 <button
