@@ -15,6 +15,7 @@ export default function LiveClassForm({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [image, setImage] = useState(null);  // <-- added image state
 
   const subjects = [
     "Math",
@@ -33,8 +34,8 @@ export default function LiveClassForm({
     setError("");
     setSuccess(false);
 
-    if (!name || !description || !link || !dateTime || !subject) {
-      setError("All fields including subject are required.");
+    if (!name || !description || !link || !dateTime || !subject || !image) {
+      setError("All fields including subject and image are required.");
       return;
     }
 
@@ -56,11 +57,23 @@ export default function LiveClassForm({
         return;
       }
 
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("description", description);
+      formData.append("link", link);
+      formData.append("date_time", dateTime);
+      formData.append("subject", subject);
+      formData.append("user_id", userId);
+      formData.append("img_url", image);  // append image as file
+
       const response = await axios.post(
         "http://localhost:8080/api/live-class",
-        { name, description, link, date_time: dateTime, subject, user_id: userId },
+        formData,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
         }
       );
 
@@ -71,6 +84,7 @@ export default function LiveClassForm({
       setLink("");
       setDateTime("");
       setSubject("");
+      setImage(null);
     } catch (err) {
       console.error("Live class error:", err);
       setError("Failed to submit. Try again.");
@@ -163,6 +177,34 @@ export default function LiveClassForm({
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Image Upload */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Thumbnail Image</label>
+        {!image ? (
+          <input
+            type="file"
+            accept="image/*"
+            className="w-full border rounded-md px-3 py-2 text-sm"
+            onChange={(e) => {
+              setImage(e.target.files[0]);
+              setError("");
+              setSuccess(false);
+            }}
+          />
+        ) : (
+          <div className="text-sm text-gray-600 mt-1 w-full border rounded-md px-3 py-2 flex justify-between items-center">
+            <span>Selected file: {image.name}</span>
+            <button
+              onClick={() => setImage(null)}
+              className="text-blue-600 underline text-xs"
+              type="button"
+            >
+              Change
+            </button>
+          </div>
+        )}
       </div>
 
       <button

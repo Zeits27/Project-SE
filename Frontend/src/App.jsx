@@ -10,9 +10,8 @@ import LiveClass from "./page/LiveClass";
 import Libraries from "./page/Libraries";
 import Classes from "./page/Classes";
 import BookDetail from "./page/BookDetail";
-
-
-
+import Bookmarks from "./page/BookMarks";
+import CommunityDetail from "./page/CommunityDetail";
 export default function App() {
 
 
@@ -29,6 +28,8 @@ export default function App() {
         <Route path="/libraries" element={<Libraries />} />
         <Route path="/classes" element={<Classes />} />
         <Route path="/books/:slug" element={<BookDetail />} />
+        <Route path="/bookmark" element={<Bookmarks />} />
+        <Route path="/community/:slug" element={<CommunityDetail />} />
 
       </Routes>
     </Router>
