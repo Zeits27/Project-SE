@@ -4,8 +4,14 @@ import Topbar from "../components/Topbar";
 import WelcomeBanner from "../components/WelcomeBanner";
 import SectionList from "../components/SectionList";
 import Rightbar from "../components/Rightbar";
+import { useContext } from "react";
+import { AuthContext } from "../utils/AuthContext";
+
 
 export default function Home() {
+    const { user } = useContext(AuthContext); // Get user from auth context
+  
+    const isLoggedIn = !!user;
   
   
   
@@ -14,11 +20,12 @@ export default function Home() {
       <Sidebar /> 
       <main className="flex-1 p-4 overflow-y-auto">
         <Topbar />
+          <WelcomeBanner
+            name={isLoggedIn ? `Welcome! ${user.name}` : "Welcome!"}
+            Description="Dive into a world of knowledge, stories, and endless possibilities."
+          />
 
-        <WelcomeBanner 
-          name="Welcome!  "
-          Description="Dive into a world of knowledge, stories, and endless possibilities." 
-        />
+       
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
           <div className="md:col-span-2 space-y-6 p-5 rounded-xl pb-28 pl-0 bg-white shadow-xl">
             <SectionList title="Popular" items={["Classes 1", "Classes 2", "Live Classes 3"]} />

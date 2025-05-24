@@ -256,40 +256,142 @@ def get_user_id():
     # API: Create a community
 @app.route('/api/community', methods=['POST'])
 def create_community():
-        email = decode_token(request)
-        if not email:
-            return jsonify({"error": "Unauthorized"}), 401
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
 
-        data = request.get_json()
-        name = data.get("name")
-        description = data.get("description")
-        user_id = data.get("user_id")
+    name = request.form.get("name")
+    description = request.form.get("description")
+    user_id = request.form.get("user_id")
+    cover_image = request.files.get("cover_image")
+    banner_image = request.files.get("banner_image")
 
-        if not name or not description or not user_id:
-            return jsonify({"error": "All fields are required"}), 400
+    if not name or not description or not user_id or not cover_image or not banner_image:
+        return jsonify({"error": "All fields including cover and banner images are required."}), 400
 
-        try:
-            with get_connection() as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        INSERT INTO communities (name, description, user_id)
-                        VALUES (%s, %s, %s)
-                        RETURNING id;
-                        """,
-                        (name, description, user_id)
-                    )
-                    community_id = cursor.fetchone()[0]
-                    conn.commit()
+    slug = generate_slug(name)
 
-            return jsonify({
-                "message": "Community created successfully",
-                "community_id": community_id
-            }), 201
+    # Upload cover image
+    cover_filename = secure_filename(cover_image.filename)
+    cover_url = upload_to_wasabi(cover_image, f"communities/cover/{cover_filename}")
+    if not cover_url:
+        return jsonify({"error": "Failed to upload cover image"}), 500
 
-        except Exception as e:
-            print("Community creation error:", e)
-            return jsonify({"error": "Failed to create community"}), 500
+    # Upload banner image
+    banner_filename = secure_filename(banner_image.filename)
+    banner_url = upload_to_wasabi(banner_image, f"communities/banner/{banner_filename}")
+    if not banner_url:
+        return jsonify({"error": "Failed to upload banner image"}), 500
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                # Handle duplicate slugs
+                base_slug = slug
+                counter = 1
+                while True:
+                    cursor.execute("SELECT id FROM communities WHERE slug = %s", (slug,))
+                    if not cursor.fetchone():
+                        break
+                    slug = f"{base_slug}-{counter}"
+                    counter += 1
+
+                cursor.execute(
+                    """
+                    INSERT INTO communities (name, description, user_id, slug, cover_url, banner_url)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id;
+                    """,
+                    (name, description, user_id, slug, cover_url, banner_url)
+                )
+                community_id = cursor.fetchone()[0]
+                conn.commit()
+
+        return jsonify({
+            "message": "Community created successfully",
+            "community_id": community_id,
+            "slug": slug,
+            "cover_url": cover_url,
+            "banner_url": banner_url
+        }), 201
+
+    except Exception as e:
+        print("Community creation error:", e)
+        return jsonify({"error": "Failed to create community"}), 500
+    
+#get all communities
+@app.route("/api/community", methods=["GET"])
+def get_all_communities():
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT id, name, description, user_id, slug, cover_url, banner_url
+                    FROM communities
+                    ORDER BY created_at DESC
+                """)
+                rows = cursor.fetchall()
+                communitiess = []
+                for row in rows:
+                    cover_key = row[5].split(f"{WASABI_BUCKET}/")[-1] if row[5] else None
+                    banner_key = row[6].split(f"{WASABI_BUCKET}/")[-1] if row[6] else None
+
+                    cover_url = generate_presigned_url(cover_key) if cover_key else None
+                    banner_url = generate_presigned_url(banner_key) if banner_key else None
+
+                    communitiess.append({
+                        "id": row[0],
+                        "name": row[1],
+                        "description": row[2],
+                        "user_id": row[3],
+                        "slug": row[4],
+                        "cover_url": cover_url,
+                        "banner_url": banner_url
+                    })
+                return jsonify(communitiess), 200
+    except Exception as e:
+        print("Error fetching communities:", e)
+        return jsonify({"error": "Failed to fetch communities"}), 500
+
+@app.route("/api/community/<slug>", methods=["GET"])
+def get_community_by_slug(slug):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT id, name, description, user_id, slug, cover_url, banner_url , created_at
+                    FROM communities
+                    WHERE slug = %s
+                """, (slug,))
+                row = cursor.fetchone()
+
+                if row:
+                    cover_key = row[5].split(f"{WASABI_BUCKET}/")[-1] if row[5] else None
+                    banner_key = row[6].split(f"{WASABI_BUCKET}/")[-1] if row[6] else None
+
+                    cover_url = generate_presigned_url(cover_key) if cover_key else None
+                    banner_url = generate_presigned_url(banner_key) if banner_key else None
+
+                    community = {
+                        "id": row[0],
+                        "name": row[1],
+                        "description": row[2],
+                        "user_id": row[3],
+                        "slug": row[4],
+                        "cover_url": cover_url,
+                        "banner_url": banner_url
+                        ,"created_at": row[7]
+                    }
+                    return jsonify(community), 200
+                else:
+                    return jsonify({"error": "Community not found"}), 404
+    except Exception as e:
+        print("Error fetching community:", e)
+        return jsonify({"error": "Failed to fetch community"}), 500
+
+
+
+
         
 #create live-class
 @app.route('/api/live-class', methods=['POST'])
@@ -298,19 +400,26 @@ def create_live_class():
     if not email:
         return jsonify({"error": "Unauthorized"}), 401
 
-    data = request.get_json()
-    name = data.get("name")
-    description = data.get("description")
-    link = data.get("link")
-    date_time = data.get("date_time")
-    user_id = data.get("user_id")
-    subject = data.get("subject")
+    # Use request.form for text fields
+    name = request.form.get("name")
+    description = request.form.get("description")
+    link = request.form.get("link")
+    date_time = request.form.get("date_time")
+    user_id = request.form.get("user_id")
+    subject = request.form.get("subject")
 
+    # Use request.files for the image file
+    img = request.files.get("img_url")
 
-    if not name or not description or not link or not date_time or not subject or not user_id:
+    if not name or not description or not link or not date_time or not subject or not user_id or not img:
         return jsonify({"error": "All fields are required"}), 400
 
     slug = generate_slug(name)
+
+    img_filename = secure_filename(img.filename)
+    img_url = upload_to_wasabi(img, f"liveclass/banner/{img_filename}")
+    if not img_url:
+        return jsonify({"error": "Failed to upload banner image"}), 500
 
     try:
         with get_connection() as conn:
@@ -318,7 +427,7 @@ def create_live_class():
                 base_slug = slug
                 counter = 1
                 while True:
-                    cursor.execute("SELECT id FROM book WHERE slug = %s", (slug,))
+                    cursor.execute("SELECT id FROM live_class WHERE slug = %s", (slug,))
                     if not cursor.fetchone():
                         break
                     slug = f"{base_slug}-{counter}"
@@ -326,11 +435,11 @@ def create_live_class():
 
                 cursor.execute(
                     """
-                    INSERT INTO live_class (name, description, link, date_time, subject, user_id, slug)
-                    VALUES (%s, %s, %s, %s, %s, %s,%s)
+                    INSERT INTO live_class (name, description, link, date_time, subject, user_id, slug, img_url)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id;
                     """,
-                    (name, description, link, date_time, subject, user_id, slug)
+                    (name, description, link, date_time, subject, user_id, slug, img_url)
                 )
                 live_class_id = cursor.fetchone()[0]
                 conn.commit()
@@ -344,6 +453,7 @@ def create_live_class():
         print("live class creation error:", e)
         return jsonify({"error": "Failed to create live class"}), 500
 
+
 #get all live class
 @app.route("/api/live-class", methods=["GET"])
 def get_all_liveclass():
@@ -351,13 +461,16 @@ def get_all_liveclass():
         with get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    SELECT id, name, description, link, date_time, subject, slug
+                    SELECT id, name, description, link, date_time, subject, slug, img_url
                     FROM live_class
                     ORDER BY created_at DESC
                 """)
                 rows = cursor.fetchall()
                 books = []
                 for row in rows:
+                    image_key = row[7].split(f"{WASABI_BUCKET}/")[-1] if row[7] else None
+                    image_presigned = generate_presigned_url(image_key) if image_key else None
+
                     books.append({
                         "id": row[0],
                         "name": row[1],
@@ -365,7 +478,7 @@ def get_all_liveclass():
                         "link": row[3],
                         "date_time": row[4],
                         "subject": row[5],
-                        "image": f"https://via.placeholder.com/300x420?text={row[1].replace(' ', '+')}",
+                        "image": image_presigned,
                         "slug": row[6]
                     })
                 return jsonify(books), 200
@@ -380,11 +493,13 @@ def get_liveclass_by_id(slug):
         with get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    SELECT id, name, description, link, date_time, subject, slug
+                    SELECT id, name, description, link, date_time, subject, slug, img_url
                     FROM live_class
                     WHERE slug = %s
                 """, (slug,))
                 row = cursor.fetchone()
+                image_key = row[7].split(f"{WASABI_BUCKET}/")[-1] if row[7] else None
+                image_presigned = generate_presigned_url(image_key) if image_key else None
                 if row:
                     book = {
                         "id": row[0],
@@ -393,7 +508,7 @@ def get_liveclass_by_id(slug):
                         "description": row[2],
                         "date_time": row[4],
                         "subject": row[5],
-                        "image": f"https://via.placeholder.com/300x420?text={row[1].replace(' ', '+')}",
+                        "image":image_presigned,
                         "slug": row[6]
 
                     }

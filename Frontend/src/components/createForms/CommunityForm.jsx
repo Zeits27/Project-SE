@@ -5,13 +5,15 @@ export default function CommunityForm({ name, setName, description, setDescripti
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [image, setImage] = useState(null);     // Cover image
+  const [banner, setBanner] = useState(null);   // Banner image
 
   const handleSubmit = async () => {
     setError("");
     setSuccess(false);
 
-    if (!name || !description) {
-      setError("Both name and description are required.");
+    if (!name || !description || !image || !banner) {
+      setError("All fields including cover image and banner image are required.");
       return;
     }
 
@@ -39,21 +41,33 @@ export default function CommunityForm({ name, setName, description, setDescripti
         return;
       }
 
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("description", description);
+      formData.append("user_id", userId);
+      formData.append("cover_image", image);
+      formData.append("banner_image", banner);
+
       const response = await axios.post(
         "http://localhost:8080/api/community",
-        { name, description, user_id: userId },
+        formData,
         {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data"
+          }
         }
       );
 
-      console.log("Data submitted successfully:", response.data);
+      console.log("Community submitted successfully:", response.data);
       setSuccess(true);
       setName("");
       setDescription("");
+      setImage(null);
+      setBanner(null);
     } catch (err) {
-      console.error("Error submitting data:", err);
-      setError("Failed to submit. Try again.");
+      console.error("Error submitting community:", err);
+      setError("Failed to create community. Try again.");
     } finally {
       setLoading(false);
     }
@@ -61,6 +75,7 @@ export default function CommunityForm({ name, setName, description, setDescripti
 
   return (
     <div className="w-full max-w-md space-y-4">
+      <h2 className="text-xl font-semibold">Create a Community</h2>
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
       {success && <p className="text-green-500 text-sm">Community created successfully!</p>}
@@ -98,6 +113,58 @@ export default function CommunityForm({ name, setName, description, setDescripti
         <div className="text-xs text-gray-500">
           {description.length}/100 characters
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Cover Image</label>
+        {!image ? (
+          <input
+            type="file"
+            accept="image/*"
+            className="w-full border rounded-md px-3 py-2 text-sm"
+            onChange={(e) => {
+              setImage(e.target.files[0]);
+              setError("");
+              setSuccess(false);
+            }}
+          />
+        ) : (
+          <div className="text-sm text-gray-600 mt-1 w-full border rounded-md px-3 py-2 ">
+            Selected file: {image.name}
+            <button
+              onClick={() => setImage(null)}
+              className="ml-2 text-blue-600 underline text-xs"
+            >
+              Change
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Banner Image</label>
+        {!banner ? (
+          <input
+            type="file"
+            accept="image/*"
+            className="w-full border rounded-md px-3 py-2 text-sm"
+            onChange={(e) => {
+              setBanner(e.target.files[0]);
+              setError("");
+              setSuccess(false);
+            }}
+          />
+        ) : (
+          <div className="text-sm text-gray-600 mt-1 w-full border rounded-md px-3 py-2 ">
+            Selected file: {banner.name}
+            <button
+              onClick={() => setBanner(null)}
+              className="ml-2 text-blue-600 underline text-xs"
+            >
+              Change
+            </button>
+          </div>
+        )}
       </div>
 
       <button

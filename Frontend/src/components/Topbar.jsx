@@ -38,7 +38,15 @@ export default function Topbar() {
       />
 
       <div className="flex items-center space-x-4 ml-4">
-        <Bookmark className="text-blue-600 w-6 h-6" />
+        {isLoggedIn && (
+          <button
+            onClick={() => navigate("/bookmark")}
+            className="text-blue-600 w-6 h-6"
+            title="Bookmarks"
+          >
+            <Bookmark className="w-full h-full" />
+          </button>
+        )}
 
         {isLoggedIn ? (
           <div className="relative" ref={dropdownRef}>
@@ -52,7 +60,6 @@ export default function Topbar() {
                 alt="Profile"
                 className="w-8 h-8 rounded-full"
               />
-              
               <ChevronDown className="w-4 h-4 text-gray-600" />
             </button>
 

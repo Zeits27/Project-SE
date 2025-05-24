@@ -11,7 +11,7 @@ export default function WelcomeBanner({name, Description}) {
     <div className="bg-gradient-to-r from-blue-400 to-purple-500 text-white p-6 rounded-xl mb-6">
       {isLoggedIn ? (
         <>
-          <h1 className="text-xl font-bold">Welcome, {user.name}!</h1>
+          <h1 className="text-xl font-bold">{name}!</h1>
           <p>{Description}</p>
         </>
       ) : (

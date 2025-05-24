@@ -70,7 +70,7 @@ export default function BookDetail() {
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-6 pl-4">
               <BooksSection title="Recommended Books" items={recommended} />
             </div>
           </div>
