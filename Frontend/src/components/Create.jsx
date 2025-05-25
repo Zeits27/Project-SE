@@ -73,8 +73,8 @@ export default function Create() {
 
       {/* Overlay */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex justify-center items-center">
-          <div className="bg-white w-full max-w-6xl h-[750px] rounded-lg shadow-lg relative mx-4 flex overflow-hidden">
+        <div className="fixed inset-0 bg-black/40 z-50 flex justify-center items-center p-4">
+          <div className="bg-white w-full max-w-4xl h-[90vh] rounded-lg shadow-lg relative mx-4 flex overflow-hidden">
             {/* Close Button */}
             <button
               className="absolute top-4 right-4 text-gray-600 hover:text-gray-900 z-10"

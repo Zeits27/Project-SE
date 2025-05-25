@@ -5,6 +5,7 @@ import Topbar from "../components/Topbar";
 import CommunityCards from "../components/CommunityCards";
 import Rightbar from "../components/Rightbar";
 import WelcomeBanner from "../components/WelcomeBanner";
+import LoadingScreen from "../components/LoadingScreen";
 
 export default function Community() {
   const [communities, setCommunities] = useState([]);
@@ -23,7 +24,14 @@ export default function Community() {
       });
   }, [])
 
+  const scrollToTop = () => {
+    document.querySelector('main')?.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
 
+  if (loading) return <LoadingScreen />;
 
   return (
   <div className="flex h-screen bg-gradient-to-br from-white to-blue-100">
@@ -36,9 +44,6 @@ export default function Community() {
       />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         <div className="md:col-span-2">
-          {loading ? (
-            <p className="text-gray-500">Loading communities...</p>
-          ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {communities.map((community) => (
                 <CommunityCards
@@ -51,7 +56,6 @@ export default function Community() {
                 />
               ))}
             </div>
-          )}
         </div>
 
         {/* Right Sidebar */}
@@ -66,6 +70,12 @@ export default function Community() {
           />
         </div>
       </div>
+
+      <button 
+          onClick={scrollToTop} 
+          className="fixed bottom-6 right-12 p-7 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-600">
+          ↑
+        </button>
     </main>
   </div>
 );
