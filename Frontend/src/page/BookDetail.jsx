@@ -48,7 +48,7 @@ export default function BookDetail() {
               </div>
               <div className="flex flex-col justify-between h-full w-full">
                 <div className="flex-3/4 overflow-hidden">
-                  <h1 className="text-6xl font-bold mb-1">{book.name}</h1>
+                  <h1 className="text-6xl font-bold mb-1">{book.title}</h1>
                   <p className="text-gray-700 mb-1 text-3xl">by {book.author}</p>
                   <p className="text-gray-600 mb-1">Subject: {book.subject}</p>
                   <p className="text-gray-600 mb-1 mt-2">{book.description}</p>
@@ -65,7 +65,7 @@ export default function BookDetail() {
                 </a>
 
                   <button className="bg-blue-400 text-white px-10 py-5 rounded-md hover:bg-blue-500">
-                    Open in Web
+                    Bookmark
                   </button>
                 </div>
               </div>
