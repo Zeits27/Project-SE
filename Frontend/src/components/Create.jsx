@@ -108,7 +108,6 @@ export default function Create() {
 
             {/* Form Content */}
             <div className="w-3/4 px-6 py-6 overflow-y-auto">
-              <h2 className="text-2xl font-semibold mb-4">Create {selectedType}</h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Conditional Forms */}

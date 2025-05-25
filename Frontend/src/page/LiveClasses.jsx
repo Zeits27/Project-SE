@@ -20,7 +20,7 @@ export default function LiveClasses() {
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Error loading books:", err);
+        console.error("Error loading  Live Classes:", err);
         setLoading(false);
       });
   }, []);
@@ -35,7 +35,7 @@ export default function LiveClasses() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
           <div className="md:col-span-2 space-y-6  p-5 rounded-xl pb-28 pt-0 pl-0">
               {loading ? (
-              <p className="text-gray-500">Loading books...</p>
+              <p className="text-gray-500">Loading Live Classes...</p>
               ) : (
                 liveclass.map((livecalsss) => (
                   <LiveClassCards
