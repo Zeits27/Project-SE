@@ -5,6 +5,7 @@ import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import Rightbar from "../components/Rightbar";
 import BooksSection from "../components/BooksSection";
+import LoadingScreen from "../components/LoadingScreen"
 
 export default function BookDetail() {
   const { slug } = useParams();
@@ -31,7 +32,7 @@ export default function BookDetail() {
     fetchData();
   }, [slug]);
 
-  if (loading) return <p className="p-6">Loading...</p>;
+  if (loading) return <LoadingScreen />;
   if (!book || book.error) return <p className="p-6 text-red-600">Book not found.</p>;
 
   return (

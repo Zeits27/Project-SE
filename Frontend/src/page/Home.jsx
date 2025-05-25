@@ -12,7 +12,13 @@ export default function Home() {
     const { user } = useContext(AuthContext); // Get user from auth context
   
     const isLoggedIn = !!user;
-  
+
+    const scrollToTop = () => {
+      document.querySelector('main')?.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+      });
+    };
   
   
   return (
@@ -43,6 +49,12 @@ export default function Home() {
               items={["Live Classes 1", "Live Classes 2", "Live Classes 3"]}
             />
           </div>
+
+          <button 
+          onClick={scrollToTop} 
+          className="fixed bottom-6 right-12 p-7 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-600">
+          ↑
+        </button>
         </div>
       </main>
     </div>

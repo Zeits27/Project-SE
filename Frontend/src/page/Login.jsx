@@ -97,12 +97,17 @@ export default function Login() {
 
         {error && <p className="text-red-500 text-base text-center">{error}</p>}
 
-        <button
-          onClick={() => navigate("/register")}
-          className="w-full text-base text-blue-600 hover:underline"
-        >
-          Don’t have an account? Register
-        </button>
+        <div className="flex justify-center mt-4">
+          <p className="text-base">
+            Don’t have an account? 
+          <span
+            onClick={() => navigate("/register")}
+            className="ml-2 w-full text-base text-blue-600 hover:underline cursor-pointer"
+          >
+            Register
+          </span>
+          </p>
+        </div>
       </div>
     </div>
   );

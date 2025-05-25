@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
+import LoadingScreen from "../components/LoadingScreen"
 
 export default function CommunityDetail() {
   const { slug } = useParams();
@@ -25,7 +26,7 @@ export default function CommunityDetail() {
     fetchCommunity();
   }, [slug]);
 
-  if (loading) return <p className="p-6">Loading...</p>;
+  if (loading) return <LoadingScreen />;
   if (!community || community.error) {
     return (
       <div className="flex h-screen items-center justify-center">
