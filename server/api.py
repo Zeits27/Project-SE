@@ -13,13 +13,14 @@ from werkzeug.utils import secure_filename
 from botocore.exceptions import NoCredentialsError
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+# from flask_jwt_extended import jwt_required, get_jwt_identity
 
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}}, expose_headers=["Authorization"])
 
 # Secrets
 JWT_SECRET = os.getenv("JWT_SECRET", "your-jwt-secret")
@@ -658,6 +659,128 @@ def get_book_by_id(slug):
     except Exception as e:
         print("Error fetching book:", e)
         return jsonify({"error": "Failed to fetch book"}), 500
+
+#bookmark
+
+@app.route("/api/bookmark", methods=["POST"])
+    
+def add_bookmark():
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    user = get_user_by_email(email)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    current_user_id = user["id"]
+    data = request.get_json()
+    content_type = data.get("content_type")
+    content_id = data.get("content_id")
+
+    if content_type not in ["book", "live"]:
+        return jsonify({"error": "Invalid content type"}), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT 1 FROM bookmarks WHERE user_id = %s AND content_type = %s AND content_id = %s
+    """, (current_user_id, content_type, content_id))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Already bookmarked"}), 400
+
+    cur.execute("""
+        INSERT INTO bookmarks (user_id, content_type, content_id) VALUES (%s, %s, %s)
+    """, (current_user_id, content_type, content_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"message": "Bookmarked successfully"}), 201
+
+
+@app.route("/api/bookmark", methods=["DELETE"])
+def remove_bookmark():
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    user = get_user_by_email(email)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    current_user_id = user["id"]
+    data = request.get_json()
+    content_type = data.get("content_type")
+    content_id = data.get("content_id")
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        DELETE FROM bookmarks WHERE user_id = %s AND content_type = %s AND content_id = %s
+    """, (current_user_id, content_type, content_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({"message": "Bookmark removed"}), 200
+
+
+
+@app.route("/api/bookmark", methods=["GET"])
+def get_bookmarks():
+    print("Authorization header:", request.headers.get("Authorization"))
+
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    user = get_user_by_email(email)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    current_user_id = user["id"]
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT content_type, content_id FROM bookmarks WHERE user_id = %s
+    """, (current_user_id,))
+    bookmarks = cur.fetchall()
+
+    results = []
+
+    for content_type, content_id in bookmarks:
+        if content_type == "book":
+            cur.execute("SELECT title, author, pdf_url FROM book WHERE id = %s", (content_id,))
+            data = cur.fetchone()
+            if data:
+                results.append({
+                    "type": "book",
+                    "id": content_id,
+                    "title": data[0],
+                    "author": data[1],
+                    "pdf_url": data[2]
+                })
+        elif content_type == "live":
+            cur.execute("SELECT title, mentor_name, date_time, image_url FROM live_classes WHERE id = %s", (content_id,))
+            data = cur.fetchone()
+            if data:
+                results.append({
+                    "type": "live",
+                    "id": content_id,
+                    "title": data[0],
+                    "mentor_name": data[1],
+                    "date_time": data[2],
+                    "image_url": data[3]
+                })
+
+    cur.close()
+    conn.close()
+    return jsonify(results), 200
 
 
 

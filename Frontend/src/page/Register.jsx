@@ -4,9 +4,6 @@ import { useContext } from "react";
 import axios from "axios";
 import { AuthContext } from "../utils/AuthContext";
 
-
-
-
 export default function Register() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
@@ -120,12 +117,17 @@ export default function Register() {
 
         {error && <p className="text-red-500 text-base text-center">{error}</p>}
 
-        <button
-          onClick={() => navigate("/login")}
-          className="w-full text-base text-blue-600 hover:underline"
-        >
-          Already have an account? Login
-        </button>
+        <div className="flex justify-center mt-4">
+          <p className="text-base">
+            Already have an account?  
+            <span
+              onClick={() => navigate("/login")}
+              className="ml-2 w-full text-base text-blue-600 hover:underline cursor-pointer"
+            >
+              Login
+            </span>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -3,10 +3,14 @@ import Topbar from "../components/Topbar";
 import Rightbar from "../components/Rightbar";
 import WelcomeBanner from "../components/WelcomeBanner";
 import BooksSection from "../components/BooksSection"; // Uses BooksCard internally
-
 export default function Classes() {
     
-      
+  const scrollToTop = () => {
+    document.querySelector('main')?.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-white to-blue-100">
@@ -38,6 +42,12 @@ export default function Classes() {
             />
           </div>
         </div>
+
+        <button 
+          onClick={scrollToTop} 
+          className="fixed bottom-6 right-12 p-7 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-600">
+          ↑
+        </button>
       </main>
     </div>
   );

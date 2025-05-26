@@ -3,7 +3,6 @@ export default function SectionList({ title, items }) {
     <section className="mb-6">
       <div className="flex justify-between items-center px-4 mb-2">
         <h2 className="text-2xl font-bold">{title}</h2>
-        <button className="text-blue-600 text-sm hover:underline">See All</button>
       </div>
       <div className="flex flex-wrap gap-2 pl-4 ">
         {items.map((item, index) => (
