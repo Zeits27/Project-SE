@@ -9,7 +9,9 @@ export default function Card({
   slug,
   date,
   amount,
-  type, // "book", "live-class", or "class"
+  type, // "book", "live-class", "class", or "community"
+  cover_url,
+  members,
 }) {
   const formattedDate = date
     ? new Date(date).toLocaleString("en-US", {
@@ -23,7 +25,14 @@ export default function Card({
     : null;
 
   const displayTitle = title || name;
-  const linkPath = type === "book" ? `/books/${slug}` : `/liveclass/${slug}`;
+  const linkPath =
+    type === "book"
+      ? `/books/${slug}`
+      : type === "live-class"
+      ? `/liveclass/${slug}`
+      : type === "community"
+      ? `/community/${slug}`
+      : "#";
 
   return (
     <Link to={linkPath}>
@@ -32,30 +41,44 @@ export default function Card({
           type === "class" ? "h-48" : "h-64"
         }`}
       >
-        {/* For book: image full size and text overlay on hover */}
-        {type === "book" ? (
+        {/* COMMUNITY CARD */}
+        {type === "community" ? (
           <>
-        <div className="relative w-40 h-64 rounded-xl overflow-hidden shadow bg-white hover:shadow-lg transition group">
-          <img
-            src={image}
-            alt={displayTitle}
-            className="w-full h-full object-cover"
-          />
-          {/* Background overlay only has opacity */}
-          <div className="absolute inset-0 bg-black bg-opacity-60 opacity-0 group-hover:opacity-40 transition-opacity pointer-events-none"></div>
-          
-          {/* Text overlay without opacity (fully visible on hover) */}
-          <div className="absolute inset-0 flex flex-col justify-center p-3 text-white opacity-0 group-hover:opacity-100 transition-opacity">
-            <h3 className="font-semibold text-sm truncate">{displayTitle}</h3>
-            {author && <p className="text-xs mt-1">by {author}</p>}
-            {subject && <p className="text-xs mt-1">#{subject}</p>}
-          </div>
-        </div>
-
+            <div className="relative w-40 h-64 rounded-xl overflow-hidden shadow bg-white hover:shadow-lg transition group">
+              <img
+                src={cover_url || "/placeholder-community.png"}
+                alt={`${name} cover`}
+                className="w-full h-40 object-cover"
+              />
+              <div className="p-2">
+                <h3 className="font-semibold text-sm truncate">{name}</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  {members ?? 0} members
+                </p>
+              </div>
+            </div>
+          </>
+        ) : type === "book" ? (
+          <>
+            <div className="relative w-40 h-64 rounded-xl overflow-hidden shadow bg-white hover:shadow-lg transition group">
+              <img
+                src={image}
+                alt={displayTitle}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black bg-opacity-60 opacity-0 group-hover:opacity-40 transition-opacity pointer-events-none"></div>
+              <div className="absolute inset-0 flex flex-col justify-center p-3 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                <h3 className="font-semibold text-sm truncate">
+                  {displayTitle}
+                </h3>
+                {author && <p className="text-xs mt-1">by {author}</p>}
+                {subject && <p className="text-xs mt-1">#{subject}</p>}
+              </div>
+            </div>
           </>
         ) : (
           <>
-            {/* For live-class and class types, normal layout */}
+            {/* Live class & class */}
             {type !== "class" && (
               <img
                 src={image}
@@ -63,7 +86,6 @@ export default function Card({
                 className="w-full h-40 object-cover"
               />
             )}
-
             <div
               className={`p-2 ${
                 type === "class" ? "flex flex-col justify-between h-full" : ""
@@ -97,4 +119,3 @@ export default function Card({
     </Link>
   );
 }
-

@@ -5,34 +5,94 @@ import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import Rightbar from "../components/Rightbar";
 import LiveclassSection from "../components/LiveclassSection";
+import LoadingScreen from "../components/LoadingScreen";
 
 export default function LiveClass() {
   const { slug } = useParams();
   const [liveClass, setLiveClass] = useState(null);
   const [recommended, setRecommended] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [classRes, recRes] = await Promise.all([
-          axios.get(`http://localhost:8080/api/live-class/${slug}`),
-          axios.get("http://localhost:8080/api/live-class")
-        ]);
-        setLiveClass(classRes.data);
-        setRecommended(recRes.data);
-      } catch (err) {
-        console.error("Error fetching live class detail:", err);
-        setLiveClass({ error: true });
-      } finally {
-        setLoading(false);
+  const fetchData = async () => {
+  const token = localStorage.getItem("token");
+  try {
+    const [classRes, recRes] = await Promise.all([
+      axios.get(`http://localhost:8080/api/live-class/${slug}`),
+      axios.get("http://localhost:8080/api/live-class")
+    ]);
+
+    setLiveClass(classRes.data);
+    setRecommended(recRes.data);
+
+    if (token) {
+      const liveClassId = classRes.data?.id;  // safe optional chaining
+      if (liveClassId) {
+        try {
+          const res = await axios.get("http://localhost:8080/api/bookmark", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          const isBookmarked = res.data.some(
+            (item) => item.type === "live" && item.id === liveClassId
+          );
+          setIsBookmarked(isBookmarked);
+        } catch (err) {
+          console.warn("Could not check bookmark:", err);
+        }
       }
-    };
+    }
+  } catch (err) {
+    console.error("Error fetching live class detail:", err);
+    setLiveClass({ error: true });
+  } finally {
+    setLoading(false);
+  }
+};
+
+
     fetchData();
   }, [slug]);
 
-  if (loading) return <p className="p-6">Loading...</p>;
-  if (!liveClass || liveClass.error) return <p className="p-6 text-red-600">Live class not found.</p>;
+  const handleBookmark = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You must be logged in to bookmark.");
+      return;
+    }
+
+    try {
+      if (isBookmarked) {
+        await axios.delete("http://localhost:8080/api/bookmark", {
+          headers: { Authorization: `Bearer ${token}` },
+          data: {
+            content_type: "live",
+            content_id: liveClass.id
+          }
+        });
+        setIsBookmarked(false);
+      } else {
+        await axios.post(
+          "http://localhost:8080/api/bookmark",
+          {
+            content_type: "live",
+            content_id: liveClass.id
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+        setIsBookmarked(true);
+      }
+    } catch (error) {
+      console.error("Error bookmarking:", error);
+    }
+  };
+
+  if (loading) return <LoadingScreen />;
+  if (!liveClass || liveClass.error)
+    return <p className="p-6 text-red-600">Live class not found.</p>;
 
   const formattedDate = new Date(liveClass.date_time).toLocaleString('en-US', {
     weekday: 'short',
@@ -48,50 +108,54 @@ export default function LiveClass() {
       <Sidebar />
       <main className="flex-1 p-4 overflow-y-auto">
         <Topbar />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-          {/* Main Content */}
-          <div className="md:col-span-2 bg-white p-6 rounded-xl shadow-md">
-            <div className="flex flex-col md:flex-row gap-8">
-              {/* Image */}
-              <div className="md:w-1/3 h-64 md:h-auto bg-gray-200 rounded-lg overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="md:col-span-2 bg-white p-5 rounded-xl pb-28 pt-0 pl-0">
+            <div className="flex items-start gap-14 p-6 h-124">
+              <div className="w-180 h-full bg-gray-300 rounded-md overflow-hidden">
                 <img
                   src={liveClass.image || "/default-image.png"}
-                  onError={(e) => (e.target.src = "/default-image.png")}
                   alt={liveClass.name}
+                  onError={(e) => (e.target.src = "/default-image.png")}
                   className="w-full h-full object-cover"
                 />
               </div>
-
-              {/* Info Section */}
-              <div className="flex-1 space-y-3">
-                <h1 className="text-4xl font-bold text-gray-900">{liveClass.name}</h1>
-                <p className="text-gray-600 text-lg">📅 {formattedDate}</p>
-                <p className="text-gray-700 text-lg">🎓 Subject: <span className="font-medium">{liveClass.subject}</span></p>
-                <p className="text-gray-800 text-lg">
-                  🔗 Zoom Link:{" "}
-                  <a
-                    href={liveClass.link}
-                    className="text-blue-600 underline break-all"
-                    target="_blank"
-                    rel="noopener noreferrer"
+              <div className="flex flex-col justify-between h-full w-full">
+                <div className="flex-3/4 overflow-hidden">
+                  <h1 className="text-5xl font-bold mb-1">{liveClass.name}</h1>
+                  <p className="text-gray-700 mb-1 text-2xl">{formattedDate}</p>
+                  <p className="text-gray-600 mb-1">Subject: {liveClass.subject}</p>
+                  <p className="text-gray-600 mb-1">
+                    Zoom Link:{" "}
+                    <a
+                      href={liveClass.link}
+                      className="text-blue-600 underline break-all"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {liveClass.link}
+                    </a>
+                  </p>
+                  <p className="text-gray-600 mt-2">{liveClass.description}</p>
+                </div>
+                <div className="flex gap-3 mt-auto">
+                  <button
+                    onClick={handleBookmark}
+                    className="bg-blue-400 text-white px-10 py-5 rounded-md hover:bg-blue-500"
                   >
-                    {liveClass.link}
-                  </a>
-                </p>
-                <p className="text-gray-700 mt-2">📝 Description: {liveClass.description}</p>
+                    {isBookmarked ? "Remove Bookmark" : "Bookmark"}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Recommended Live Classes */}
-            <div className="mt-10">
+            <div className="mt-6 pl-4">
               <LiveclassSection title="More Live Classes You May Like" items={recommended} />
             </div>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            <Rightbar title="Join The Skills" items={["Live Classes 1", "Live Classes 2", "Live Classes 3"]} />
-            <Rightbar title="Ask The Expert" items={["Teacher 1", "Teacher 2", "Teacher 3"]} />
+            <Rightbar title="Top Communities" type="community" />
+            <Rightbar title="Live Classes" type="liveclass" />
           </div>
         </div>
       </main>

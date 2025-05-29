@@ -3,28 +3,146 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
-import LoadingScreen from "../components/LoadingScreen"
+import LoadingScreen from "../components/LoadingScreen";
 
 export default function CommunityDetail() {
   const { slug } = useParams();
   const [community, setCommunity] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [showPostForm, setShowPostForm] = useState(false);
+  const [newPost, setNewPost] = useState({ title: "", content: "" });
+  const [replyInputs, setReplyInputs] = useState({});
 
-  useEffect(() => {
-    const fetchCommunity = async () => {
+  
+useEffect(() => {
+  const fetchCommunity = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.get(`http://localhost:8080/api/community/${slug}`);
+      const communityData = res.data;
+
+      let posts = [];
       try {
-        const res = await axios.get(`http://localhost:8080/api/community/${slug}`);
-        setCommunity(res.data);
+        const postRes = await axios.get(`http://localhost:8080/api/community/${slug}/posts`);
+        posts = postRes.data;
       } catch (err) {
-        console.error("Error fetching community:", err);
-        setCommunity({ error: true });
-      } finally {
-        setLoading(false);
+        console.error("Error fetching community posts:", err);
       }
-    };
 
-    fetchCommunity();
-  }, [slug]);
+      setCommunity({ ...communityData, posts });
+
+      if (token && communityData?.id) {
+        const bookmarkRes = await axios.get("http://localhost:8080/api/bookmark", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const bookmarked = bookmarkRes.data.some(
+          (item) => item.type === "community" && item.id === communityData.id
+        );
+        setIsBookmarked(bookmarked);
+      }
+    } catch (err) {
+      console.error("Error fetching community:", err);
+      setCommunity({ error: true });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchCommunity();
+}, [slug]);
+
+
+
+  const handleBookmark = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You must be logged in to join/bookmark a community.");
+      return;
+    }
+
+    try {
+      if (isBookmarked) {
+        await axios.delete("http://localhost:8080/api/bookmark", {
+          headers: { Authorization: `Bearer ${token}` },
+          data: {
+            content_type: "community",
+            content_id: community.id,
+          },
+        });
+        setIsBookmarked(false);
+      } else {
+        await axios.post(
+          "http://localhost:8080/api/bookmark",
+          {
+            content_type: "community",
+            content_id: community.id,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setIsBookmarked(true);
+      }
+    } catch (error) {
+      console.error("Error toggling community bookmark:", error);
+    }
+  };
+
+  const handleNewPost = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You must be logged in to post.");
+      return;
+    }
+
+    try {
+      const res = await axios.post(
+        `http://localhost:8080/api/community/${slug}/post`,
+        newPost,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setCommunity((prev) => ({
+        ...prev,
+        posts: [res.data, ...(prev.posts || [])],
+      }));
+      setNewPost({ title: "", content: "" });
+      setShowPostForm(false);
+    } catch (err) {
+      console.error("Error creating post:", err);
+    }
+  };
+
+  const handleReply = async (postId) => {
+    const token = localStorage.getItem("token");
+    const content = replyInputs[postId];
+    if (!token || !content) return;
+
+    try {
+      const res = await axios.post(
+        `http://localhost:8080/api/community/${slug}/post/${postId}/reply`,
+        { content },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      setCommunity((prev) => ({
+        ...prev,
+        posts: prev.posts.map((post) =>
+          post.id === postId
+            ? { ...post, replies: [...(post.replies || []), res.data] }
+            : post
+        ),
+      }));
+
+      setReplyInputs({ ...replyInputs, [postId]: "" });
+    } catch (err) {
+      console.error("Error replying to post:", err);
+    }
+  };
 
   if (loading) return <LoadingScreen />;
   if (!community || community.error) {
@@ -36,12 +154,11 @@ export default function CommunityDetail() {
       </div>
     );
   }
-    const formattedDate = new Date(community.created_at).toLocaleString('en-US', {
 
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  
+  const formattedDate = new Date(community.created_at).toLocaleString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   });
 
   return (
@@ -49,75 +166,128 @@ export default function CommunityDetail() {
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
         <Topbar />
-<section className="relative w-full h-48 md:h-56 lg:h-64 mb-6 rounded-xl overflow-hidden">
-  {community.banner_url ? (
-    <img
-      src={community.banner_url}
-      alt={`${community.name} banner`}
-      className="absolute inset-0 w-full h-full object-cover"
-    />
-  ) : (
-    <div className="absolute inset-0" />
-  )}
 
-  <div className="absolute inset-0 bg-opacity-50 flex items-end justify-between px-6 pb-4">
-    <div className="flex items-center gap-4">
-      <div className="w-16 h-16 md:w-20 md:h-20 bg-white rounded-full overflow-hidden border-4 border-white">
-        {community.cover_url ? (
-          <img
-            src={community.cover_url}
-            alt={`${slug} icon`}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gray-300" />
-        )}
-      </div>
-      <h1 className="text-white text-2xl md:text-3xl font-bold bg-black p-1.5 rounded-full ">{community.name}</h1>
-    </div>
-    <div className="flex gap-2">
-      <button className="bg-white text-black font-medium px-4 py-2 rounded hover:bg-gray-100">
-        Create Post
-      </button>
-      <button className="bg-blue-600 text-white font-medium px-4 py-2 rounded hover:bg-blue-700">
-        Join
-      </button>
-    </div>
-  </div>
-</section>
+        <section className="relative w-full h-48 md:h-56 lg:h-64 mb-6 overflow-hidden">
+          {community.banner_url ? (
+            <img
+              src={community.banner_url}
+              alt={`${community.name} banner`}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-yellow-400" />
+          )}
 
+          <div className="absolute bottom-0 left-0 w-full px-6 py-4 bg-white/80 backdrop-blur-md shadow-lg rounded-t-lg flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-white rounded-full overflow-hidden border-4 border-white shadow-md">
+                {community.cover_url ? (
+                  <img
+                    src={community.cover_url}
+                    alt={`${slug} icon`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-300" />
+                )}
+              </div>
+              <h1 className="text-black text-2xl md:text-3xl font-bold">{community.name}</h1>
+            </div>
 
-
-        <div className="flex gap-6 px-4 pb-6">
-          {/* Left: Posts */}
-          <div className="flex-1 space-y-4">
-            <p className="text-sm text-gray-600">{community.description}</p>
-            <div className="mt-4 space-y-4">
-              {(community.posts || []).map((post, i) => (
-                <div key={i} className="p-4 rounded-lg bg-white shadow hover:shadow-md">
-                  <p className="text-sm text-gray-500">
-                    {post.author} • {post.time}
-                  </p>
-                  <h2 className="text-lg font-semibold mt-1">{post.title}</h2>
-                  <p className="text-sm mt-1">{post.content}</p>
-
-                  <div className="flex gap-4 text-sm text-gray-500 mt-2">
-                    <span>👍 {post.votes}</span>
-                    <span>💬 {post.comments}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowPostForm((prev) => !prev)}
+                className="bg-gray-100 text-black font-medium px-4 py-2 rounded hover:bg-gray-200 shadow"
+              >
+                {showPostForm ? "Cancel" : "Create Post"}
+              </button>
+              <button
+                onClick={handleBookmark}
+                className="bg-blue-400 text-white px-10 py-5 rounded-md hover:bg-blue-500"
+              >
+                {isBookmarked ? "Leave community" : "Join"}
+              </button>
             </div>
           </div>
+        </section>
 
-          {/* Right: Info Card */}
+        <div className="flex gap-6 px-4 pb-6">
+          <div className="flex-1 space-y-4">
+            <p className="text-sm text-gray-600">{community.description}</p>
+
+            {showPostForm && (
+              <div className="p-4 bg-white rounded-lg shadow">
+                <h2 className="font-semibold mb-2">Create a New Post</h2>
+                <input
+                  type="text"
+                  placeholder="Title"
+                  value={newPost.title}
+                  onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                  className="w-full border px-3 py-2 rounded mb-2"
+                />
+                <textarea
+                  placeholder="Content"
+                  value={newPost.content}
+                  onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                  className="w-full border px-3 py-2 rounded mb-2"
+                />
+                <button
+                  onClick={handleNewPost}
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                >
+                  Post
+                </button>
+              </div>
+            )}
+
+            {(community.posts || []).map((post) => (
+              <div key={post.id} className="p-4 rounded-lg bg-white shadow hover:shadow-md">
+                <p className="text-sm text-gray-500">
+                  {post.author} • {post.time}
+                </p>
+                <h2 className="text-lg font-semibold mt-1">{post.title}</h2>
+                <p className="text-sm mt-1">{post.content}</p>
+                <div className="flex gap-4 text-sm text-gray-500 mt-2">
+                  <span>👍 {post.votes}</span>
+                  <span>💬 {(post.replies || []).length}</span>
+                </div>
+
+                <div className="mt-4 ml-4 space-y-2">
+                  {(post.replies || []).map((reply, j) => (
+                    <div key={j} className="bg-gray-100 p-2 rounded">
+                      <p className="text-sm text-gray-600">
+                        <strong>{reply.author}</strong>: {reply.content}
+                      </p>
+                    </div>
+                  ))}
+                  <div className="mt-2">
+                    <input
+                      type="text"
+                      placeholder="Write a reply..."
+                      value={replyInputs[post.id] || ""}
+                      onChange={(e) =>
+                        setReplyInputs({ ...replyInputs, [post.id]: e.target.value })
+                      }
+                      className="w-full border px-3 py-2 rounded mb-1"
+                    />
+                    <button
+                      onClick={() => handleReply(post.id)}
+                      className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 text-sm"
+                    >
+                      Reply
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div className="w-80 space-y-4">
             <div className="bg-white p-4 rounded-lg shadow">
               <h3 className="font-bold text-lg mb-2">{slug}</h3>
               <p className="text-sm text-gray-600">{community.description}</p>
               <p className="text-sm text-gray-400 mt-2">{community.members || "-"} members</p>
               <p className="text-sm text-gray-400">Created at {formattedDate}</p>
-
             </div>
           </div>
         </div>

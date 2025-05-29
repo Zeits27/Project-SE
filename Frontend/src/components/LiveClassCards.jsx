@@ -30,6 +30,7 @@ export default function LiveClassCards({ name, date, description, image, subject
         {formattedDate && (
           <p className="text-sm text-indigo-600 font-medium">Live at {formattedDate}</p>
         )}
+        
       </div>
     </Link>
   );

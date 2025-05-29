@@ -48,8 +48,8 @@ export default function Libraries() {
             <BooksSection title="Recommended Books" items={books} />
           </div>
           <div className="space-y-6">
-            <Rightbar title="Join The Skills" items={["Live Classes 1", "Live Classes 2", "Live Classes 3"]} />
-            <Rightbar title="Ask The Expert" items={["Teacher 1", "Teacher 2", "Teacher 3"]} />
+            <Rightbar title="Top Communities" type="community" />
+            <Rightbar title="Live Classes" type="liveclass" />
           </div>
         </div> 
 
