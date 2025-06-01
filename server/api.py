@@ -213,7 +213,6 @@ def set_profile():
         print("Profile update error:", e)
         return jsonify({"error": "Failed to update profile"}), 500
     
-
 # API: Get current user info
 @app.route('/api/me', methods=['GET'])
 def get_me():
@@ -233,6 +232,7 @@ def get_me():
         "education": user.get("education"),
         "region": user.get("region"),
     })
+
 @app.route('/api/home', methods=['GET'])
 def get_home_data():
         try:
@@ -343,6 +343,7 @@ def get_user_id():
         return jsonify({"user_id": user_id})
 
     # API: Create a community
+
 @app.route('/api/community', methods=['POST'])
 def create_community():
     email = decode_token(request)
@@ -354,8 +355,9 @@ def create_community():
     user_id = request.form.get("user_id")
     cover_image = request.files.get("cover_image")
     banner_image = request.files.get("banner_image")
+    subject = request.form  .get("subject")
 
-    if not name or not description or not user_id or not cover_image or not banner_image:
+    if not name or not description or not user_id or not cover_image or not banner_image or not subject:
         return jsonify({"error": "All fields including cover and banner images are required."}), 400
 
     slug = generate_slug(name)
@@ -387,11 +389,11 @@ def create_community():
 
                 cursor.execute(
                     """
-                    INSERT INTO communities (name, description, user_id, slug, cover_url, banner_url)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO communities (name, description, user_id, slug, cover_url, banner_url,subject)
+                    VALUES (%s, %s, %s, %s, %s, %s,%s)
                     RETURNING id;
                     """,
-                    (name, description, user_id, slug, cover_url, banner_url)
+                    (name, description, user_id, slug, cover_url, banner_url, subject)
                 )
                 community_id = cursor.fetchone()[0]
                 conn.commit()
@@ -401,7 +403,8 @@ def create_community():
             "community_id": community_id,
             "slug": slug,
             "cover_url": cover_url,
-            "banner_url": banner_url
+            "banner_url": banner_url,
+            "subject": subject
         }), 201
 
     except Exception as e:
@@ -478,7 +481,6 @@ def get_community_by_slug(slug):
         print("Error fetching community:", e)
         return jsonify({"error": "Failed to fetch community"}), 500
 
-
 @app.route("/api/community/<slug>/post", methods=["POST"])
 def create_post(slug):
     email = decode_token(request)
@@ -531,8 +533,6 @@ def create_post(slug):
     except Exception as e:
         print("Post creation error:", e)
         return jsonify({"error": "Internal server error"}), 500
-
-
 
 @app.route("/api/community/<slug>/post/<int:post_id>/reply", methods=["POST"])
 def reply_to_post(slug, post_id):
@@ -638,7 +638,6 @@ def get_community_posts(slug):
         print("Error fetching posts with replies:", e)
         return jsonify({"error": "Internal server error"}), 500
 
-
 @app.route("/api/post/<int:post_id>/reply", methods=["POST"])
 def create_reply(post_id):
     user_email = decode_token(request)
@@ -671,6 +670,181 @@ def create_reply(post_id):
         print("Error creating reply:", e)
         return jsonify({"error": "Server error"}), 500
 
+@app.route('/api/class', methods=['POST'])
+def create_class():
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    name = request.form.get("name")
+    image = request.files.get("image")
+
+    if not name or not image:
+        return jsonify({"error": "Name and image are required."}), 400
+
+    slug = generate_slug(name)
+
+    image_filename = secure_filename(image.filename)
+    image_url = upload_to_wasabi(image, f"class_images/{image_filename}")
+    if not image_url:
+        return jsonify({"error": "Failed to upload image"}), 500
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                # Handle duplicate slugs
+                base_slug = slug
+                counter = 1
+                while True:
+                    cursor.execute("SELECT id FROM class WHERE slug = %s", (slug,))
+                    if not cursor.fetchone():
+                        break
+                    slug = f"{base_slug}-{counter}"
+                    counter += 1
+
+                cursor.execute(
+                    """
+                    INSERT INTO class (name, slug, img_url)
+                    VALUES (%s, %s, %s)
+                    RETURNING id;
+                    """,
+                    (name, slug, image_url)
+                )
+                class_id = cursor.fetchone()[0]
+                conn.commit()
+
+        return jsonify({
+            "message": "Class created successfully",
+            "class_id": class_id,
+            "slug": slug,
+            "img_url": image_url
+        }), 201
+
+    except Exception as e:
+        print("Class creation error:", e)
+        return jsonify({"error": "Failed to create class"}), 500
+
+@app.route('/api/class', methods=['GET'])
+def get_all_classes():
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT id, name, slug, img_url FROM class ORDER BY name;
+                """)
+                classes = cursor.fetchall()
+                classess = []
+                for classs in classes:
+                    image_key = classs[3].split(f"{WASABI_BUCKET}/")[-1]
+                    image_presigned = generate_presigned_url(image_key)
+
+                    classess.append({
+                        "id": classs[0],
+                        "name": classs[1],
+                        "slug": classs[2],
+                        "img_url": image_presigned
+
+                         })
+
+            return jsonify(classess), 200 
+
+    except Exception as e:
+        print("Error fetching class list:", e)
+        return jsonify({"error": "Failed to fetch classes"}), 500
+    
+@app.route('/api/class/<slug>', methods=['GET'])
+def get_class_by_slug(slug):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # Get the class info
+                cur.execute("SELECT id, name, slug, img_url FROM class WHERE slug = %s;", (slug,))
+                result = cur.fetchone()
+                if not result:
+                    return jsonify({"error": "Class not found"}), 404
+
+                class_id, name, slug, img_url = result
+                class_image_key = img_url.split(f"{WASABI_BUCKET}/")[-1] if img_url else None
+                class_image = generate_presigned_url(class_image_key) if class_image_key else None
+
+                subject = name  # Use name as the subject
+
+                # --- Fetch Books ---
+                cur.execute("""
+                    SELECT id, title, author, subject, description, image_url, pdf_url, slug
+                    FROM book WHERE subject = %s;
+                """, (subject,))
+                books = []
+                for b in cur.fetchall():
+                    image_key = b[5].split(f"{WASABI_BUCKET}/")[-1] if b[5] else None
+                    pdf_key = b[6].split(f"{WASABI_BUCKET}/")[-1] if b[6] else None
+
+                    books.append({
+                        "type": "book",
+                        "id": b[0],
+                        "title": b[1],
+                        "author": b[2],
+                        "subject": b[3],
+                        "description": b[4],
+                        "image": generate_presigned_url(image_key) if image_key else None,
+                        "pdf": generate_presigned_url(pdf_key) if pdf_key else None,
+                        "slug": b[7]
+                    })
+
+                # --- Fetch Communities ---
+                cur.execute("""
+                    SELECT id, name, description, user_id, slug, cover_url, banner_url
+                    FROM communities WHERE subject = %s;
+                """, (subject,))
+                communities = []
+                for c in cur.fetchall():
+                    cover_key = c[5].split(f"{WASABI_BUCKET}/")[-1] if c[5] else None
+                    banner_key = c[6].split(f"{WASABI_BUCKET}/")[-1] if c[6] else None
+
+                    communities.append({
+                        "type": "community",
+                        "id": c[0],
+                        "name": c[1],
+                        "description": c[2],
+                        "user_id": c[3],
+                        "slug": c[4],
+                        "cover_url": generate_presigned_url(cover_key) if cover_key else None,
+                        "banner_url": generate_presigned_url(banner_key) if banner_key else None
+                    })
+
+                # --- Fetch Live Classes ---
+                cur.execute("""
+                    SELECT id, name, description, link, date_time, subject, slug, img_url
+                    FROM live_class WHERE subject = %s;
+                """, (subject,))
+                live_classes = []
+                for l in cur.fetchall():
+                    img_key = l[7].split(f"{WASABI_BUCKET}/")[-1] if l[7] else None
+                    live_classes.append({
+                        "type": "live",
+                        "id": l[0],
+                        "name": l[1],
+                        "description": l[2],
+                        "link": l[3],
+                        "date_time": l[4],
+                        "subject": l[5],
+                        "slug": l[6],
+                        "image": generate_presigned_url(img_key) if img_key else None
+                    })
+
+                return jsonify({
+                    "id": class_id,
+                    "name": name,
+                    "slug": slug,
+                    "image": class_image,
+                    "books": books,
+                    "communities": communities,
+                    "live_classes": live_classes
+                }), 200
+
+    except Exception as e:
+        print("Error fetching class detail:", e)
+        return jsonify({"error": "Server error"}), 500
 
         
 #create live-class
@@ -732,7 +906,6 @@ def create_live_class():
     except Exception as e:
         print("live class creation error:", e)
         return jsonify({"error": "Failed to create live class"}), 500
-
 
 #get all live class
 @app.route("/api/live-class", methods=["GET"])

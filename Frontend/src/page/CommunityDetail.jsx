@@ -152,11 +152,11 @@ export default function CommunityDetail() {
     );
   }
 
-  // const formattedDate = new Date(community.created_at).toLocaleString("en-US", {
-  //   day: "numeric",
-  //   month: "short",
-  //   year: "numeric",
-  // });
+  const formattedDate = new Date(community.created_at).toLocaleString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-white to-blue-100">
@@ -270,6 +270,16 @@ export default function CommunityDetail() {
               );
             })}
           </div>
+
+           <div className="w-80 space-y-4">
+            <div className="bg-white p-4 rounded-lg shadow">
+              <h3 className="font-bold text-lg mb-2">{slug}</h3>
+              <p className="text-sm text-gray-600">{community.description}</p>
+              <p className="text-sm text-gray-400 mt-2">{community.members || "-"} members</p>
+              <p className="text-sm text-gray-400">Created at {formattedDate}</p>
+            </div>
+          </div>
+
         </div>
       </main>
     </div>

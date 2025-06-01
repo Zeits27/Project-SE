@@ -12,6 +12,7 @@ import Classes from "./page/Classes";
 import BookDetail from "./page/BookDetail";
 import Bookmarks from "./page/BookMarks";
 import CommunityDetail from "./page/CommunityDetail";
+import Classesdetail from "./page/Classesdetail";
 export default function App() {
 
 
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/books/:slug" element={<BookDetail />} />
         <Route path="/bookmark" element={<Bookmarks />} />
         <Route path="/community/:slug" element={<CommunityDetail />} />
+        <Route path="/class/:slug" element={<Classesdetail />} />
 
       </Routes>
     </Router>

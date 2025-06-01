@@ -3,16 +3,23 @@ import axios from 'axios';
 
 export default function CommunityForm({ name, setName, description, setDescription }) {
   const [error, setError] = useState("");
+  const [subject, setSubject] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [image, setImage] = useState(null);     // Cover image
   const [banner, setBanner] = useState(null);   // Banner image
 
+  const subjects = [
+    "Math", "Biology", "History", "Mental Health", "Physics",
+    "Chemistry", "Literature", "Technology", "Art", "Philosophy"
+  ];
+
   const handleSubmit = async () => {
     setError("");
     setSuccess(false);
 
-    if (!name || !description || !image || !banner) {
+    if (!name || !description || !image || !subject || !banner) {
       setError("All fields including cover image and banner image are required.");
       return;
     }
@@ -45,6 +52,8 @@ export default function CommunityForm({ name, setName, description, setDescripti
       formData.append("name", name);
       formData.append("description", description);
       formData.append("user_id", userId);
+      formData.append("subject", subject);
+
       formData.append("cover_image", image);
       formData.append("banner_image", banner);
 
@@ -113,6 +122,26 @@ export default function CommunityForm({ name, setName, description, setDescripti
         <div className="text-xs text-gray-500">
           {description.length}/150 characters
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Subject</label>
+        <select
+          className="w-full border rounded-md px-3 py-2 text-sm"
+          value={subject}
+          onChange={(e) => {
+            setSubject(e.target.value);
+            setError("");
+            setSuccess(false);
+          }}
+        >
+          <option value="">Select a subject</option>
+          {subjects.map((subj) => (
+            <option key={subj} value={subj}>
+              {subj}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
