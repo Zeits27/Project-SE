@@ -14,45 +14,42 @@ export default function CommunityDetail() {
   const [newPost, setNewPost] = useState({ title: "", content: "" });
   const [replyInputs, setReplyInputs] = useState({});
 
-  
-useEffect(() => {
-  const fetchCommunity = async () => {
-    const token = localStorage.getItem("token");
-    try {
-      const res = await axios.get(`http://localhost:8080/api/community/${slug}`);
-      const communityData = res.data;
-
-      let posts = [];
+  useEffect(() => {
+    const fetchCommunity = async () => {
+      const token = localStorage.getItem("token");
       try {
-        const postRes = await axios.get(`http://localhost:8080/api/community/${slug}/posts`);
-        posts = postRes.data;
+        const res = await axios.get(`http://localhost:8080/api/community/${slug}`);
+        const communityData = res.data;
+
+        let posts = [];
+        try {
+          const postRes = await axios.get(`http://localhost:8080/api/community/${slug}/posts`);
+          posts = postRes.data;
+        } catch (err) {
+          console.error("Error fetching community posts:", err);
+        }
+
+        setCommunity({ ...communityData, posts });
+
+        if (token && communityData?.id) {
+          const bookmarkRes = await axios.get("http://localhost:8080/api/bookmark", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const bookmarked = bookmarkRes.data.some(
+            (item) => item.type === "community" && item.id === communityData.id
+          );
+          setIsBookmarked(bookmarked);
+        }
       } catch (err) {
-        console.error("Error fetching community posts:", err);
+        console.error("Error fetching community:", err);
+        setCommunity({ error: true });
+      } finally {
+        setLoading(false);
       }
+    };
 
-      setCommunity({ ...communityData, posts });
-
-      if (token && communityData?.id) {
-        const bookmarkRes = await axios.get("http://localhost:8080/api/bookmark", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const bookmarked = bookmarkRes.data.some(
-          (item) => item.type === "community" && item.id === communityData.id
-        );
-        setIsBookmarked(bookmarked);
-      }
-    } catch (err) {
-      console.error("Error fetching community:", err);
-      setCommunity({ error: true });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  fetchCommunity();
-}, [slug]);
-
-
+    fetchCommunity();
+  }, [slug]);
 
   const handleBookmark = async () => {
     const token = localStorage.getItem("token");
@@ -132,7 +129,7 @@ useEffect(() => {
       setCommunity((prev) => ({
         ...prev,
         posts: prev.posts.map((post) =>
-          post.id === postId
+          post.id === postId || post.post_id === postId
             ? { ...post, replies: [...(post.replies || []), res.data] }
             : post
         ),
@@ -155,11 +152,11 @@ useEffect(() => {
     );
   }
 
-  const formattedDate = new Date(community.created_at).toLocaleString("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  // const formattedDate = new Date(community.created_at).toLocaleString("en-US", {
+  //   day: "numeric",
+  //   month: "short",
+  //   year: "numeric",
+  // });
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-white to-blue-100">
@@ -240,55 +237,38 @@ useEffect(() => {
               </div>
             )}
 
-            {(community.posts || []).map((post) => (
-              <div key={post.id} className="p-4 rounded-lg bg-white shadow hover:shadow-md">
-                <p className="text-sm text-gray-500">
-                  {post.author} • {post.time}
-                </p>
-                <h2 className="text-lg font-semibold mt-1">{post.title}</h2>
-                <p className="text-sm mt-1">{post.content}</p>
-                <div className="flex gap-4 text-sm text-gray-500 mt-2">
-                  <span>👍 {post.votes}</span>
-                  <span>💬 {(post.replies || []).length}</span>
-                </div>
-
-                <div className="mt-4 ml-4 space-y-2">
-                  {(post.replies || []).map((reply, j) => (
-                    <div key={j} className="bg-gray-100 p-2 rounded">
-                      <p className="text-sm text-gray-600">
-                        <strong>{reply.author}</strong>: {reply.content}
-                      </p>
-                    </div>
-                  ))}
+            {(community.posts || []).map((post, index) => {
+              const postKey = post.id || post.post_id || `fallback-${index}`;
+              return (
+                <div key={postKey} className="bg-white p-4 rounded shadow">
+                  <h3 className="text-lg font-semibold">{post.title}</h3>
+                  <p className="text-sm text-gray-600 mb-2">By {post.author}</p>
+                  <p className="mb-2">{post.content}</p>
                   <div className="mt-2">
-                    <input
-                      type="text"
-                      placeholder="Write a reply..."
-                      value={replyInputs[post.id] || ""}
-                      onChange={(e) =>
-                        setReplyInputs({ ...replyInputs, [post.id]: e.target.value })
-                      }
-                      className="w-full border px-3 py-2 rounded mb-1"
+                    <textarea
+                      placeholder="Reply..."
+                      value={replyInputs[postKey] || ""}
+                      onChange={(e) => setReplyInputs({ ...replyInputs, [postKey]: e.target.value })}
+                      className="w-full border px-2 py-1 rounded"
                     />
                     <button
-                      onClick={() => handleReply(post.id)}
-                      className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 text-sm"
+                      onClick={() => handleReply(postKey)}
+                      className="mt-1 px-3 py-1 bg-blue-400 text-white rounded hover:bg-blue-500"
                     >
                       Reply
                     </button>
                   </div>
+                  <div className="mt-4 space-y-2">
+                    {(post.replies || []).map((reply) => (
+                      <div key={reply.id} className="text-sm border-t pt-2">
+                        <p className="font-semibold">{reply.author}</p>
+                        <p>{reply.content}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="w-80 space-y-4">
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="font-bold text-lg mb-2">{slug}</h3>
-              <p className="text-sm text-gray-600">{community.description}</p>
-              <p className="text-sm text-gray-400 mt-2">{community.members || "-"} members</p>
-              <p className="text-sm text-gray-400">Created at {formattedDate}</p>
-            </div>
+              );
+            })}
           </div>
         </div>
       </main>
