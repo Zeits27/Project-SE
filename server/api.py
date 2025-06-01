@@ -13,13 +13,14 @@ from werkzeug.utils import secure_filename
 from botocore.exceptions import NoCredentialsError
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+# from flask_jwt_extended import jwt_required, get_jwt_identity
 
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}}, expose_headers=["Authorization"])
 
 # Secrets
 JWT_SECRET = os.getenv("JWT_SECRET", "your-jwt-secret")
@@ -96,15 +97,20 @@ def generate_presigned_url(filename, expiration=3600):
 def decode_token(request):
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
+        print("No auth header")
         return None
     token = auth_header.split(" ")[1]
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        print("Decoded email:", payload["email"])  # <-- DEBUG
         return payload["email"]
     except jwt.ExpiredSignatureError:
+        print("Token expired")
         return None
-    except jwt.InvalidTokenError:
+    except jwt.InvalidTokenError as e:
+        print("Invalid token", e)
         return None
+
 
 # Register
 
@@ -227,7 +233,90 @@ def get_me():
         "education": user.get("education"),
         "region": user.get("region"),
     })
+@app.route('/api/home', methods=['GET'])
+def get_home_data():
+        try:
+            with get_connection() as conn:
+                with conn.cursor() as cursor:
+                    # Communities
+                    cursor.execute("""
+                        SELECT id, name, description, user_id, slug, cover_url, banner_url
+                        FROM communities
+                        ORDER BY created_at DESC
+                        LIMIT 10
+                    """)
+                    communities = []
+                    for row in cursor.fetchall():
+                        cover_key = row[5].split(f"{WASABI_BUCKET}/")[-1] if row[5] else None
+                        banner_key = row[6].split(f"{WASABI_BUCKET}/")[-1] if row[6] else None
+                        cover_url = generate_presigned_url(cover_key) if cover_key else None
+                        banner_url = generate_presigned_url(banner_key) if banner_key else None
+                        communities.append({
+                            "id": row[0],
+                            "name": row[1],
+                            "description": row[2],
+                            "user_id": row[3],
+                            "slug": row[4],
+                            "cover_url": cover_url,
+                            "banner_url": banner_url
+                        })
 
+                    # Live Classes
+                    cursor.execute("""
+                        SELECT id, name, description, link, date_time, subject, slug, img_url
+                        FROM live_class
+                        ORDER BY created_at DESC
+                        LIMIT 10
+                    """)
+                    live_classes = []
+                    for row in cursor.fetchall():
+                        image_key = row[7].split(f"{WASABI_BUCKET}/")[-1] if row[7] else None
+                        image_presigned = generate_presigned_url(image_key) if image_key else None
+                        live_classes.append({
+                            "id": row[0],
+                            "name": row[1],
+                            "description": row[2],
+                            "link": row[3],
+                            "date_time": row[4],
+                            "subject": row[5],
+                            "slug": row[6],
+                            "image": image_presigned
+                        })
+
+                    # Books
+                    cursor.execute("""
+                        SELECT id, title, author, subject, description, image_url, pdf_url, slug
+                        FROM book
+                        ORDER BY created_at DESC
+                        LIMIT 10
+                    """)
+                    books = []
+                    for row in cursor.fetchall():
+                        image_key = row[5].split(f"{WASABI_BUCKET}/")[-1] if row[5] else None
+                        pdf_key = row[6].split(f"{WASABI_BUCKET}/")[-1] if row[6] else None
+                        image_presigned = generate_presigned_url(image_key) if image_key else None
+                        pdf_presigned = generate_presigned_url(pdf_key) if pdf_key else None
+                        books.append({
+                            "id": row[0],
+                            "title": row[1],
+                            "author": row[2],
+                            "subject": row[3],
+                            "description": row[4],
+                            "image": image_presigned,
+                            "pdf": pdf_presigned,
+                            "slug": row[7]
+                        })
+
+            return jsonify({
+                "communities": communities,
+                "live_classes": live_classes,
+                "books": books
+            }), 200
+        except Exception as e:
+            print("Error fetching home data:", e)
+            return jsonify({"error": "Failed to fetch home data"}), 500
+        
+        
     # Helper: get user ID by email
 def get_user_id_by_email(email):
         try:
@@ -390,6 +479,197 @@ def get_community_by_slug(slug):
         return jsonify({"error": "Failed to fetch community"}), 500
 
 
+@app.route("/api/community/<slug>/post", methods=["POST"])
+def create_post(slug):
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.json
+    title = data.get("title")
+    content = data.get("content")
+    if not title or not content:
+        return jsonify({"error": "Title and content required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                # Get user ID
+                cursor.execute("SELECT id, name FROM users WHERE email = %s;", (email,))
+                user = cursor.fetchone()
+                if not user:
+                    return jsonify({"error": "User not found"}), 404
+
+                # Get community ID
+                cursor.execute("SELECT id FROM communities WHERE slug = %s;", (slug,))
+                community = cursor.fetchone()
+                if not community:
+                    return jsonify({"error": "Community not found"}), 404
+
+                # Insert post
+                cursor.execute(
+                    """
+                    INSERT INTO posts (community_id, user_id, title, content)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id, created_at;
+                    """,
+                    (community["id"], user["id"], title, content),
+                )
+                post = cursor.fetchone()
+                conn.commit()
+
+                return jsonify({
+                    "id": post["id"],
+                    "title": title,
+                    "content": content,
+                    "author": user["name"],
+                    "created_at": post["created_at"],
+                    "replies": [],
+                    "votes": 0,
+                    "comments": 0
+                }), 201
+    except Exception as e:
+        print("Post creation error:", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+
+@app.route("/api/community/<slug>/post/<int:post_id>/reply", methods=["POST"])
+def reply_to_post(slug, post_id):
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.json
+    content = data.get("content")
+    if not content:
+        return jsonify({"error": "Content required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                # Get user
+                cursor.execute("SELECT id, name FROM users WHERE email = %s;", (email,))
+                user = cursor.fetchone()
+                if not user:
+                    return jsonify({"error": "User not found"}), 404
+
+                # Ensure post exists
+                cursor.execute("SELECT id FROM posts WHERE id = %s;", (post_id,))
+                if not cursor.fetchone():
+                    return jsonify({"error": "Post not found"}), 404
+
+                # Insert reply
+                cursor.execute(
+                    """
+                    INSERT INTO replies (post_id, user_id, content)
+                    VALUES (%s, %s, %s)
+                    RETURNING id, created_at;
+                    """,
+                    (post_id, user["id"], content),
+                )
+                reply = cursor.fetchone()
+                conn.commit()
+
+                return jsonify({
+                    "id": reply["id"],
+                    "content": content,
+                    "author": user["name"],
+                    "created_at": reply["created_at"]
+                }), 201
+    except Exception as e:
+        print("Reply creation error:", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route("/api/community/<slug>/posts", methods=["GET"])
+def get_community_posts(slug):
+    try:
+        with get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                # Find community ID
+                cursor.execute("SELECT id FROM communities WHERE slug = %s;", (slug,))
+                community = cursor.fetchone()
+                if not community:
+                    return jsonify({"error": "Community not found"}), 404
+
+                # Get posts for the community
+                cursor.execute("""
+                    SELECT 
+                        posts.id AS post_id,
+                        posts.title,
+                        posts.content,
+                        posts.created_at,
+                        users.name AS author
+                    FROM posts
+                    JOIN users ON posts.user_id = users.id
+                    WHERE posts.community_id = %s
+                    ORDER BY posts.created_at DESC;
+                """, (community["id"],))
+                posts = cursor.fetchall()
+
+                post_ids = [post["post_id"] for post in posts]
+
+                # Get replies to those posts
+                if post_ids:
+                    cursor.execute("""
+                        SELECT 
+                            replies.id,
+                            replies.post_id,
+                            replies.content,
+                            replies.created_at,
+                            users.name AS author
+                        FROM replies
+                        JOIN users ON replies.user_id = users.id
+                        WHERE replies.post_id = ANY(%s)
+                        ORDER BY replies.created_at ASC;
+                    """, (post_ids,))
+                    replies = cursor.fetchall()
+                else:
+                    replies = []
+
+                # Group replies under each post
+                post_map = {post["post_id"]: {**post, "replies": []} for post in posts}
+                for reply in replies:
+                    post_map[reply["post_id"]]["replies"].append(reply)
+
+                return jsonify(list(post_map.values())), 200
+
+    except Exception as e:
+        print("Error fetching posts with replies:", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route("/api/post/<int:post_id>/reply", methods=["POST"])
+def create_reply(post_id):
+    user_email = decode_token(request)
+    if not user_email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.json
+    content = data.get("content", "").strip()
+
+    if not content:
+        return jsonify({"error": "Reply content is required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT id FROM users WHERE email = %s;", (user_email,))
+                user = cursor.fetchone()
+                if not user:
+                    return jsonify({"error": "User not found"}), 404
+
+                cursor.execute("""
+                    INSERT INTO replies (post_id, user_id, content)
+                    VALUES (%s, %s, %s);
+                """, (post_id, user[0], content))
+                conn.commit()
+
+        return jsonify({"message": "Reply created"}), 201
+
+    except Exception as e:
+        print("Error creating reply:", e)
+        return jsonify({"error": "Server error"}), 500
 
 
         
@@ -658,6 +938,169 @@ def get_book_by_id(slug):
     except Exception as e:
         print("Error fetching book:", e)
         return jsonify({"error": "Failed to fetch book"}), 500
+
+#bookmark
+
+@app.route("/api/bookmark", methods=["POST"])
+    
+def add_bookmark():
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    user = get_user_by_email(email)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    current_user_id = user["id"]
+    data = request.get_json()
+    content_type = data.get("content_type")
+    content_id = data.get("content_id")
+
+    if content_type not in ["book", "live", "community"]:
+        return jsonify({"error": "Invalid content type"}), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT 1 FROM bookmarks WHERE user_id = %s AND content_type = %s AND content_id = %s
+    """, (current_user_id, content_type, content_id))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Already bookmarked"}), 400
+
+    cur.execute("""
+        INSERT INTO bookmarks (user_id, content_type, content_id) VALUES (%s, %s, %s)
+    """, (current_user_id, content_type, content_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"message": "Bookmarked successfully"}), 201
+
+
+@app.route("/api/bookmark", methods=["DELETE"])
+def remove_bookmark():
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    user = get_user_by_email(email)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    current_user_id = user["id"]
+    data = request.get_json()
+    content_type = data.get("content_type")
+    content_id = data.get("content_id")
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        DELETE FROM bookmarks WHERE user_id = %s AND content_type = %s AND content_id = %s
+    """, (current_user_id, content_type, content_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({"message": "Bookmark removed"}), 200
+
+
+
+@app.route("/api/bookmark", methods=["GET"])
+def get_bookmarks():
+    print("Authorization header:", request.headers.get("Authorization"))
+
+    email = decode_token(request)
+    if not email:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    user = get_user_by_email(email)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    current_user_id = user["id"]
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT content_type, content_id FROM bookmarks WHERE user_id = %s
+    """, (current_user_id,))
+    bookmarks = cur.fetchall()
+
+    results = []
+
+    for content_type, content_id in bookmarks:
+            if content_type == "book":
+                cur.execute("""
+                    SELECT id, title, author, subject, description, image_url, pdf_url, slug
+                    FROM book WHERE id = %s
+                """, (content_id,))
+                data = cur.fetchone()
+                if data:
+                    image_key = data[5].split(f"{WASABI_BUCKET}/")[-1]
+                    pdf_key = data[6].split(f"{WASABI_BUCKET}/")[-1] if data[6] else None
+
+                    image_presigned = generate_presigned_url(image_key)
+                    pdf_presigned = generate_presigned_url(pdf_key) if pdf_key else None
+
+                    results.append({
+                        "type": "book",
+                        "id": data[0],
+                        "title": data[1],
+                        "author": data[2],
+                        "subject": data[3],
+                        "description": data[4],
+                        "image": image_presigned,
+                        "pdf": pdf_presigned,
+                        "slug": data[7]
+                })
+            elif content_type == "live":
+                cur.execute("""SELECT id, name, description, link, date_time, subject, slug, img_url FROM live_class WHERE id = %s""", (content_id,))
+                data = cur.fetchone()
+                if data:
+                    image_key = data[7].split(f"{WASABI_BUCKET}/")[-1] if data[7] else None
+                    image_presigned = generate_presigned_url(image_key) if image_key else None
+                    results.append({
+                        "type": "live",
+                         "id": data[0],
+                        "name": data[1],
+                        "description": data[2],
+                        "link": data[3],
+                        "date_time": data[4],
+                        "subject": data[5],
+                        "image": image_presigned,
+                        "slug": data[6]
+                    })
+            elif content_type == "community":
+                cur.execute("""
+                    SELECT id, nam  e, description, user_id, slug, cover_url, banner_url
+                    FROM communities WHERE id = %s
+                """, (content_id,))
+                data = cur.fetchone()
+                if data:
+                    cover_key = data[5].split(f"{WASABI_BUCKET}/")[-1] if data[5] else None
+                    banner_key = data[6].split(f"{WASABI_BUCKET}/")[-1] if data[6] else None
+
+                    cover_url = generate_presigned_url(cover_key) if cover_key else None
+                    banner_url = generate_presigned_url(banner_key) if banner_key else None
+
+                    results.append({
+                        "type": "community",
+                        "id": data[0],
+                        "name": data[1],
+                        "description": data[2],
+                        "user_id": data[3],
+                        "slug": data[4],
+                        "cover_url": cover_url,
+                        "banner_url": banner_url
+                    })
+
+    cur.close()
+    conn.close()
+    return jsonify(results), 200
 
 
 
