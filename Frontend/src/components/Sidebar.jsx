@@ -5,29 +5,23 @@ import {
   Home,
   BarChart,
   Users,
-  Briefcase,
   Video,
-  Settings,
-  Plus,
-  BookDashedIcon,
   Book,
 } from "lucide-react";
 import { NavLink, Link } from "react-router-dom";
 import logo from "../assets/logo.png";
-import CreateOverlay from "../components/CreateOverlay"; 
+import Create from "../components/Create"; 
 const navItems = [
   { label: "Home", icon: Home, to: "/home" },
   { label: "Classes", icon: BarChart, to: "/classes" },
   { label: "Libraries", icon: Book, to: "/libraries" },
   { label: "Community", icon: Users, to: "/community" },
-  { label: "Live Class", icon: Video, to: "/liveclasses" },
-  // { label: "Settings", icon: Settings },
-  // { label: "Report", icon: Flag },
+  { label: "Live Class", icon: Video, to: "/liveclasses" }
 ];
 
 export default function Sidebar() {
   return (
-    <div className="bg-white h-full w-64 p-6 shadow-md flex flex-col">
+    <div className="bg-white h-full w-64 p-6 shadow-md flex flex-col font-mono">
       {/* Logo */}
       <div className="mb-10 flex ">
         <Link to="/home">
@@ -55,7 +49,7 @@ export default function Sidebar() {
         <Plus className="w-5 h-5" />
         <span>Create</span>
       </div> */}
-        <CreateOverlay />
+        <Create />
         </nav>
 
    

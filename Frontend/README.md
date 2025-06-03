@@ -1,12 +1,18 @@
-# React + Vite
+# Frontend Folder Overview
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+This folder contains the frontend source code and related files for the project, structured as follows:
+1. **.vite** <br>
+Automatically created when initializing a new Vite project. It stores Vite’s internal build cache and configuration data.
+2. **public** <br>
+Contains static assets like the default Vite icons and any other files you want to serve directly (e.g., favicon, robots.txt).
+3. **src** <br>
+The main source folder of the React application, including:
+- **assets**: Contains images and static files such as the website logo.
+- **components**: Reusable UI elements and templates for pages or sections.
+- **pages**: Contains React components representing individual pages.
+- **utils**: Utility functions and context providers, such as AuthContext and route guards for authentication.
+- **App.jsx**: Defines the main app structure and routing between pages.
+- **index.css**: Global styles, including Tailwind CSS imports and custom styles.
+- **main.jsx**: The entry point of the React application, where the app is bootstrapped and rendered.
+4. **Other files** <br>
+Configuration and support files such as eslint.config.js that help with linting and overall project setup.

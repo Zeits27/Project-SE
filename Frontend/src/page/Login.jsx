@@ -1,9 +1,12 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useContext } from "react";
 import axios from "axios";
+import { AuthContext } from "../utils/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { setUser } = useContext(AuthContext);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,6 +17,7 @@ export default function Login() {
 
   const handleLogin = async () => {
     setError("");
+
     if (!email || !password) {
       setError("Email and password are required.");
       return;
@@ -31,7 +35,15 @@ export default function Login() {
         password,
       });
 
-      localStorage.setItem("userName", response.data.name);
+      const { token, name } = response.data;
+
+      // ✅ Save token so AuthContext can load user data
+      localStorage.setItem("token", token);
+
+      // ✅ Set user immediately to reflect in Topbar
+      setUser({ name, email });
+
+      // ✅ Navigate to home
       navigate("/home");
     } catch (err) {
       const message =
@@ -85,12 +97,17 @@ export default function Login() {
 
         {error && <p className="text-red-500 text-base text-center">{error}</p>}
 
-        <button
-          onClick={() => navigate("/register")}
-          className="w-full text-base text-blue-600 hover:underline"
-        >
-          Don’t have an account? Register
-        </button>
+        <div className="flex justify-center mt-4">
+          <p className="text-base">
+            Don’t have an account? 
+          <span
+            onClick={() => navigate("/register")}
+            className="ml-2 w-full text-base text-blue-600 hover:underline cursor-pointer"
+          >
+            Register
+          </span>
+          </p>
+        </div>
       </div>
     </div>
   );
