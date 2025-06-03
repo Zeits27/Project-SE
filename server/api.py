@@ -1249,7 +1249,7 @@ def get_bookmarks():
                     })
             elif content_type == "community":
                 cur.execute("""
-                    SELECT id, nam  e, description, user_id, slug, cover_url, banner_url
+                    SELECT id, name, description, user_id, slug, cover_url, banner_url
                     FROM communities WHERE id = %s
                 """, (content_id,))
                 data = cur.fetchone()

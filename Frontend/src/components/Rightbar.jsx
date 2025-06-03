@@ -30,7 +30,7 @@ export default function Rightbar({ title, type }) {
       <ul className="space-y-3">
         {items.map((item, index) => (
           <Link to={`/${type}/${item.slug}`} className="no-underline" key={index}>
-          <li key={index} className="flex items-center space-x-3">
+          <li key={index} className="flex items-center space-x-3 p-1 hover:bg-gray-100 rounded-lg transition-colors">
             <img
               src={item.cover_url || item.image}
               alt={item.name}

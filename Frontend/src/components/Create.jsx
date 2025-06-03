@@ -8,7 +8,7 @@ import ClassesForm from "./createForms/ClassesForm";
 import LiveClassForm from "./createForms/LiveClassForm";
 
 
-const types = ["Community", "Classes", "Live Class", "Books"];
+const types = ["Community", "Live Class", "Books"];
 
 export default function Create() {
   const [isOpen, setIsOpen] = useState(false);
@@ -130,7 +130,7 @@ export default function Create() {
                     setDescription={setDescription}
                   />
                 )}
-
+{/* 
                 {selectedType === "Classes" && (
                   <ClassesForm
                     name={name}
@@ -140,7 +140,7 @@ export default function Create() {
                     setSubject={setSubject}
                     setDescription={setDescription}
                   />
-                )}
+                )} */}
 
                 {selectedType === "Live Class" && (
                   <LiveClassForm
