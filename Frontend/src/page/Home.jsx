@@ -54,7 +54,7 @@ export default function Home() {
           {/* Main Content */}
           <div className="md:col-span-2 bg-white p-6 rounded-xl shadow-md space-y-10">
             <div className="flex items-center gap-6 p-4 transition mb-4">
-                <BooksSection title="Top Books" items={books} />
+                <BooksSection title="Recent Books" items={books} />
             </div>
             <div className="flex items-center gap-6  pt-4 pb-4  mb-4">
                 <LiveclassSection title="Up comming Live Classes" items={liveClasses} />

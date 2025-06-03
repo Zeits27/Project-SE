@@ -7,6 +7,7 @@ import LoadingScreen from "../components/LoadingScreen";
 
 export default function CommunityDetail() {
   const { slug } = useParams();
+  // const navigate = useNavigate();
   const [community, setCommunity] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -14,24 +15,27 @@ export default function CommunityDetail() {
   const [newPost, setNewPost] = useState({ title: "", content: "" });
   const [replyInputs, setReplyInputs] = useState({});
 
-  useEffect(() => {
-    const fetchCommunity = async () => {
-      const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
+
+useEffect(() => {
+  const fetchCommunity = async () => {
+    try {
+      const res = await axios.get(`http://localhost:8080/api/community/${slug}`);
+      const communityData = res.data;
+
+      let posts = [];
       try {
-        const res = await axios.get(`http://localhost:8080/api/community/${slug}`);
-        const communityData = res.data;
+        const postRes = await axios.get(`http://localhost:8080/api/community/${slug}/posts`);
+        posts = postRes.data;
+      } catch (err) {
+        console.error("Error fetching community posts:", err);
+      }
 
-        let posts = [];
+      setCommunity({ ...communityData, posts });
+
+      const token = localStorage.getItem("token");
+      if (token && communityData?.id) {
         try {
-          const postRes = await axios.get(`http://localhost:8080/api/community/${slug}/posts`);
-          posts = postRes.data;
-        } catch (err) {
-          console.error("Error fetching community posts:", err);
-        }
-
-        setCommunity({ ...communityData, posts });
-
-        if (token && communityData?.id) {
           const bookmarkRes = await axios.get("http://localhost:8080/api/bookmark", {
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -39,20 +43,25 @@ export default function CommunityDetail() {
             (item) => item.type === "community" && item.id === communityData.id
           );
           setIsBookmarked(bookmarked);
+        } catch (err) {
+          console.warn("Error checking bookmark:", err);
         }
-      } catch (err) {
-        console.error("Error fetching community:", err);
-        setCommunity({ error: true });
-      } finally {
-        setLoading(false);
       }
-    };
 
-    fetchCommunity();
-  }, [slug]);
+    } catch (err) {
+      console.error("Error fetching community:", err);
+      setCommunity({ error: true });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchCommunity();
+}, [slug]);
+
 
   const handleBookmark = async () => {
-    const token = localStorage.getItem("token");
+    
     if (!token) {
       alert("You must be logged in to join/bookmark a community.");
       return;
@@ -87,7 +96,6 @@ export default function CommunityDetail() {
   };
 
   const handleNewPost = async () => {
-    const token = localStorage.getItem("token");
     if (!token) {
       alert("You must be logged in to post.");
       return;
@@ -113,7 +121,6 @@ export default function CommunityDetail() {
   };
 
   const handleReply = async (postId) => {
-    const token = localStorage.getItem("token");
     const content = replyInputs[postId];
     if (!token || !content) return;
 
@@ -230,10 +237,18 @@ export default function CommunityDetail() {
                 />
                 <button
                   onClick={handleNewPost}
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  className={`px-4 py-2 rounded ${
+                    !token
+                      ? "bg-gray-300 cursor-not-allowed"
+                      : "bg-blue-500 hover:bg-blue-600 text-white"
+                  }`}
+                  disabled={!token}
                 >
                   Post
                 </button>
+                {!token && (
+                  <p className="text-sm text-red-500 mt-1">Login to post.</p>
+                )}
               </div>
             )}
 
@@ -248,15 +263,25 @@ export default function CommunityDetail() {
                     <textarea
                       placeholder="Reply..."
                       value={replyInputs[postKey] || ""}
-                      onChange={(e) => setReplyInputs({ ...replyInputs, [postKey]: e.target.value })}
+                      onChange={(e) =>
+                        setReplyInputs({ ...replyInputs, [postKey]: e.target.value })
+                      }
                       className="w-full border px-2 py-1 rounded"
                     />
                     <button
                       onClick={() => handleReply(postKey)}
-                      className="mt-1 px-3 py-1 bg-blue-400 text-white rounded hover:bg-blue-500"
+                      className={`mt-1 px-3 py-1 rounded ${
+                        !token
+                          ? "bg-gray-300 cursor-not-allowed"
+                          : "bg-blue-400 text-white hover:bg-blue-500"
+                      }`}
+                      disabled={!token}
                     >
                       Reply
                     </button>
+                    {!token && (
+                      <p className="text-xs text-red-500 mt-1">Login to reply.</p>
+                    )}
                   </div>
                   <div className="mt-4 space-y-2">
                     {(post.replies || []).map((reply) => (
@@ -271,7 +296,7 @@ export default function CommunityDetail() {
             })}
           </div>
 
-           <div className="w-80 space-y-4">
+          <div className="w-80 space-y-4">
             <div className="bg-white p-4 rounded-lg shadow">
               <h3 className="font-bold text-lg mb-2">{slug}</h3>
               <p className="text-sm text-gray-600">{community.description}</p>
@@ -279,7 +304,6 @@ export default function CommunityDetail() {
               <p className="text-sm text-gray-400">Created at {formattedDate}</p>
             </div>
           </div>
-
         </div>
       </main>
     </div>

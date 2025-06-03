@@ -11,7 +11,8 @@ export default function BookForm({ title, setTitle, author, setAuthor, descripti
 
   const subjects = [
     "Math", "Biology", "History", "Mental Health", "Physics",
-    "Chemistry", "Literature", "Technology", "Art", "Philosophy"
+    "Chemistry", "Literature", "Technology", "Art", "Philosophy",
+    "Geography", "Business", "Engineering", "Music", "Psychology"
   ];
 
   const handleSubmit = async () => {
